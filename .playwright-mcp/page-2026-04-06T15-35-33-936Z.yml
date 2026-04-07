@@ -1,0 +1,18 @@
+- generic [active] [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - button "Scrim" [ref=e26]
+        - generic [ref=e27]:
+          - generic:
+            - generic:
+              - generic: 📍 활동 지역 선택
+            - generic:
+              - generic: 시·도
+            - generic:
+              - generic: 구·군
+            - slider [ref=e29]: "50"
+            - slider [ref=e31]: "50"
+            - generic:
+              - generic: 서울특별시 강남구
+            - button "선택 완료" [ref=e32]

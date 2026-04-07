@@ -1,0 +1,22 @@
+- generic [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - heading "크루" [level=2]
+              - group:
+                - generic:
+                  - generic: 내 크루
+                - button "QA테스트크루 0P 서울특별시 강남구 1/20명 상세 보기 →" [ref=e39]
+                - generic:
+                  - generic: 크루 찾기
+                - generic:
+                  - generic: 아직 크루가 없어요. 첫 번째 크루를 만들어보세요!
+          - button "홈 Tab 1 of 5" [active] [ref=e40]
+          - button "러닝 Tab 2 of 5" [ref=e41]
+          - button "크루 Tab 3 of 5" [ref=e42]
+          - button "랭킹 Tab 4 of 5" [ref=e43]
+          - button "리워드 Tab 5 of 5" [ref=e44]

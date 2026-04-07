@@ -1,0 +1,32 @@
+- generic [active] [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - button "Scrim" [ref=e49]
+        - generic [ref=e50]:
+          - generic:
+            - group:
+              - generic:
+                - generic: ✏️ 크루 정보 수정
+              - generic:
+                - generic: 크루 이름
+              - generic [ref=e51]:
+                - textbox [ref=e52]
+                - generic:
+                  - generic: 13 characters remaining
+              - generic:
+                - generic: 활동 지역
+              - button "서울특별시 강남구" [ref=e53]
+              - generic:
+                - generic: 크루 소개
+              - generic [ref=e54]:
+                - textbox [ref=e55]
+                - generic:
+                  - generic: 100 characters remaining
+              - generic:
+                - generic: "최대 인원:"
+              - button [ref=e56]
+              - generic:
+                - generic: 20명
+              - button [ref=e57]
+              - button "저장하기" [ref=e58]

@@ -1,0 +1,26 @@
+- generic [ref=e5] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - heading "크루" [level=2]
+              - group:
+                - generic:
+                  - generic: 내 크루
+                - generic:
+                  - generic: 아직 크루가 없어요
+                - generic:
+                  - generic: 크루에 가입하거나 직접 만들어보세요!
+                - generic:
+                  - generic: 크루 찾기
+                - generic:
+                  - generic: 아직 크루가 없어요. 첫 번째 크루를 만들어보세요!
+              - button "크루 만들기" [ref=e16]
+          - button "홈 Tab 1 of 5" [ref=e11]
+          - button "러닝 Tab 2 of 5" [ref=e12]
+          - button "크루 Tab 3 of 5" [active] [ref=e13]
+          - button "랭킹 Tab 4 of 5" [ref=e14]
+          - button "리워드 Tab 5 of 5" [ref=e15]

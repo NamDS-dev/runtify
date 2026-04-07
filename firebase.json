@@ -1,0 +1,31 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "runtify-dev",
+          "appId": "1:6697997416:android:b90eb48de9a5ddc65517dd",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "runtify-dev",
+          "configurations": {
+            "web": "1:6697997416:web:ff7cf3f34e54ce205517dd"
+          }
+        },
+        "lib/firebase_options_dev.dart": {
+          "projectId": "runtify-dev",
+          "configurations": {
+            "android": "1:6697997416:android:b90eb48de9a5ddc65517dd"
+          }
+        }
+      }
+    }
+  }
+}

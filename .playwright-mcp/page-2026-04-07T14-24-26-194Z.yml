@@ -1,0 +1,13 @@
+- generic [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button [active] [ref=e63]
+            - heading "위클리 챌린지" [level=2]
+          - generic:
+            - group:
+              - generic:
+                - generic: 🏃 진행 중인 챌린지가 없어요 아래 버튼으로 새 챌린지를 만들어보세요!
+              - button "새 챌린지 만들기" [ref=e64]

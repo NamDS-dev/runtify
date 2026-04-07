@@ -1,0 +1,32 @@
+- generic [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button "Back" [active] [ref=e17]
+            - heading "크루 만들기" [level=2]
+          - generic:
+            - group:
+              - generic:
+                - generic: 크루 이름 *
+              - generic [ref=e18]:
+                - textbox "예) 강남 러너스" [ref=e19]
+                - generic:
+                  - generic: 20 characters remaining
+              - generic:
+                - generic: 활동 지역 *
+              - button "시·도 / 구·군 선택" [ref=e20]
+              - generic:
+                - generic: 크루 소개
+              - generic [ref=e21]:
+                - textbox "예) 매주 토요일 한강 러닝! 초보 환영 🏃" [ref=e22]
+                - generic:
+                  - generic: 100 characters remaining
+              - generic:
+                - generic: 최대 인원 (5~50명)
+              - button [ref=e23]
+              - generic:
+                - generic: 20명
+              - button [ref=e24]
+              - button "크루 만들기" [ref=e25]

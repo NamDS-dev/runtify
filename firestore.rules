@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 인증된 유저만 접근 가능
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // 본인 문서만 수정 가능
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // ── 유저 ──────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isAuth();
+      allow write: if isOwner(userId);
+
+      // 배지 서브컬렉션
+      match /badges/{badgeId} {
+        allow read: if isAuth();
+        allow write: if isAuth();
+      }
+
+      // 목표 서브컬렉션
+      match /goals/{goalId} {
+        allow read: if isAuth();
+        allow write: if isOwner(userId);
+      }
+    }
+
+    // ── 러닝 세션 ────────────────────────────────
+    match /running_sessions/{sessionId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update, delete: if isAuth() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── 크루 ──────────────────────────────────────
+    match /crews/{crewId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAuth() && resource.data.leaderId == request.auth.uid;
+
+      // 챌린지 서브컬렉션
+      match /challenges/{challengeId} {
+        allow read: if isAuth();
+        allow write: if isAuth();
+      }
+    }
+
+    // ── 코스 ──────────────────────────────────────
+    match /courses/{courseId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+    }
+
+    // ── 지역 통계 ────────────────────────────────
+    match /regionStats/{statId} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+  }
+}
