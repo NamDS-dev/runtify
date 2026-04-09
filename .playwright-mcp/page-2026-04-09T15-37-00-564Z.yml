@@ -1,0 +1,49 @@
+- generic [active] [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - heading "RUNTIFY" [level=2]
+                - button [ref=e17]
+              - group:
+                - generic:
+                  - generic: 안녕하세요, QA테스터님!
+                - generic:
+                  - generic: Lv.1
+                - generic:
+                  - generic: 0 / 100 XP → Lv.2
+                - progressbar "0"
+                - button "러닝 시작하기" [ref=e18]
+                - button "내 크루 QA테스트크루 이번 달 0P" [ref=e19]
+                - button "내 지역 미설정 랭킹 탭 보기 →" [ref=e20]
+                - button "💰 리워드 포인트 0P 보유 리워드 보기" [ref=e21]
+                - generic:
+                  - generic: 이번 달 러닝
+                - generic:
+                  - generic: 4월
+                - generic:
+                  - generic: "0.0"
+                - generic:
+                  - generic: km
+                - generic:
+                  - generic: "0"
+                - generic:
+                  - generic: P
+                - generic:
+                  - generic: "0"
+                - generic:
+                  - generic: 회
+                - generic:
+                  - generic: 총 거리
+                - generic:
+                  - generic: 획득 포인트
+                - generic:
+                  - generic: 러닝 횟수
+          - button "홈 Tab 1 of 5" [ref=e22]
+          - button "러닝 Tab 2 of 5" [ref=e23]
+          - button "크루 Tab 3 of 5" [ref=e24]
+          - button "랭킹 Tab 4 of 5" [ref=e25]
+          - button "리워드 Tab 5 of 5" [ref=e26]

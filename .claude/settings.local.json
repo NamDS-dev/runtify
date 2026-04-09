@@ -119,7 +119,18 @@
       "Bash(ls -la /Users/dave/runtify/ios/Runner/GoogleService*)",
       "Bash(ls -la /Users/dave/runtify/android/app/google*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git branch:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(gh repo:*)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)",
+      "Bash(ls ~/.ssh/id_*.pub)",
+      "mcp__claude-talk-to-figma__create_component_from_node",
+      "mcp__claude-talk-to-figma__create_component_instance",
+      "mcp__claude-talk-to-figma__insert_child",
+      "mcp__claude-talk-to-figma__set_text_align",
+      "Bash(flutter pub:*)"
     ]
   }
 }

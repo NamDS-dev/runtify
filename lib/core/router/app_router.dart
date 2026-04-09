@@ -7,6 +7,8 @@ import '../../features/crew/presentation/pages/crew_create_page.dart';
 import '../../features/crew/presentation/pages/crew_detail_page.dart';
 import '../../features/course/presentation/pages/course_detail_page.dart';
 import '../../features/course/presentation/pages/course_list_page.dart';
+import '../../features/onboarding/presentation/pages/ble_onboarding_page.dart';
+import '../../features/onboarding/presentation/pages/health_connect_onboarding_page.dart';
 import '../../features/crew/presentation/pages/crew_page.dart';
 import '../../features/crew/domain/entities/crew_entity.dart';
 import '../../features/reward/presentation/pages/ranking_page.dart';
@@ -124,6 +126,15 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/profile',
       builder: (context, state) => const ProfilePage(),
+    ),
+    // ── 온보딩 (Health Connect) ────────────────────────────────────
+    GoRoute(
+      path: '/onboarding/health',
+      builder: (context, state) => const HealthConnectOnboardingPage(),
+    ),
+    GoRoute(
+      path: '/onboarding/ble',
+      builder: (context, state) => const BleOnboardingPage(),
     ),
     // ── 코스 관련 (Phase 8) ─────────────────────────────────────────
     GoRoute(

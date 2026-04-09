@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../crew/presentation/providers/crew_provider.dart';
+import '../../data/datasources/health_connect_datasource.dart';
 import '../providers/running_provider.dart';
 import '../widgets/stats_overview_widget.dart';
 
@@ -100,7 +102,10 @@ class HomePage extends ConsumerWidget {
 
                   // 리워드 포인트 배너
                   _RewardBanner(points: user.points),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+
+                  // 워치 동기화 카드 (모바일 + Health Connect 권한 있을 때만)
+                  if (!kIsWeb) _WatchSyncCard(userId: user.id),
 
                   // 이번 달 통계 요약 카드
                   runsAsync.when(
@@ -460,5 +465,201 @@ class _RewardBanner extends StatelessWidget {
           : '${k.toStringAsFixed(1)}k';
     }
     return '$n';
+  }
+}
+
+// ── 워치 동기화 카드 (Health Connect) ──────────────────────────────────
+class _WatchSyncCard extends ConsumerStatefulWidget {
+  final String userId;
+  const _WatchSyncCard({required this.userId});
+
+  @override
+  ConsumerState<_WatchSyncCard> createState() => _WatchSyncCardState();
+}
+
+class _WatchSyncCardState extends ConsumerState<_WatchSyncCard> {
+  bool _hasPermission = false;
+  bool _isLoading = true;
+  bool _isSyncing = false;
+  List<dynamic> _watchSessions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAndLoad();
+  }
+
+  Future<void> _checkAndLoad() async {
+    try {
+      final hc = HealthConnectDataSource();
+      _hasPermission = await hc.hasPermissions();
+      if (_hasPermission) {
+        final sessions = await hc.getRecentSessions(widget.userId);
+        _watchSessions = sessions.take(2).toList(); // 최근 2건만 미리보기
+      }
+    } catch (_) {
+      _hasPermission = false;
+    }
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  // 전체 기록 가져오기 (Firestore에 저장)
+  Future<void> _syncAll() async {
+    setState(() => _isSyncing = true);
+    try {
+      final hc = HealthConnectDataSource();
+      final sessions = await hc.getRecentSessions(widget.userId);
+      final dataSource = ref.read(runningDataSourceProvider);
+
+      int synced = 0;
+      for (final session in sessions) {
+        try {
+          await dataSource.saveSession(session);
+          synced++;
+        } catch (_) {
+          // 이미 저장된 세션은 스킵 (중복 방지)
+        }
+      }
+
+      if (mounted) {
+        // 캐시 무효화
+        ref.invalidate(recentRunsProvider(widget.userId));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$synced건의 기록을 동기화했습니다!',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: AppTheme.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              '동기화에 실패했습니다',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: const Color(0xFFFF3333),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          ),
+        );
+      }
+    }
+    if (mounted) setState(() => _isSyncing = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 로딩 중이거나 권한 없으면 숨김
+    if (_isLoading || !_hasPermission) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.colors.cardColor,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 헤더
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '⌚ 워치 동기화',
+                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  if (_watchSessions.isNotEmpty)
+                    Text(
+                      '${_watchSessions.length}건 새 기록',
+                      style: const TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // 기록 미리보기 (최대 2건)
+              if (_watchSessions.isEmpty)
+                Text(
+                  '동기화된 워치 기록이 없습니다',
+                  style: TextStyle(color: context.colors.textSecondary, fontSize: 13),
+                )
+              else
+                ..._watchSessions.map((s) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '🏃 ${s.distanceKm.toStringAsFixed(1)}km · ${_formatDuration(s.durationSeconds)} · ${s.avgHeartRate.round()}bpm',
+                            style: TextStyle(color: context.colors.textSecondary, fontSize: 13),
+                          ),
+                          Text(
+                            _formatDate(s.startTime),
+                            style: TextStyle(color: Colors.grey.shade700, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    )),
+
+              const SizedBox(height: 8),
+
+              // 전체 가져오기 버튼
+              GestureDetector(
+                onTap: _isSyncing ? null : _syncAll,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: _isSyncing
+                        ? const SizedBox(
+                            width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+                          )
+                        : const Text(
+                            '전체 기록 가져오기 →',
+                            style: TextStyle(color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  String _formatDuration(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inDays == 0) return '오늘 ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    if (diff.inDays == 1) return '어제 ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return '${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }

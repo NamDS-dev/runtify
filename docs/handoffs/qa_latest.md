@@ -1,6 +1,6 @@
 ---
-date: 2026-04-07
-target: 크루 고도화 (정보 수정 + 리더 검증 + 멤버 퇴출 + UX 문구)
+date: 2026-04-10
+target: 워치 동기화 홈 카드 + BLE 심박수 온보딩
 result: pass
 ---
 
@@ -8,27 +8,24 @@ result: pass
 - flutter analyze: ✅ pass (0 issues)
 - flutter test: ✅ pass (1 passed)
 
-## 사전 조치
-- Firestore Security Rules 배포 (`firestore.rules` 생성 + `firebase deploy`)
-- crews, courses, regionStats 등 전체 컬렉션 규칙 추가
-
 ## 테스트 케이스
 
 | # | 케이스 | 조건 | 기대 결과 | 실제 결과 | 상태 |
 |---|--------|------|-----------|-----------|------|
-| 1 | 수정 버튼 표시 | 리더 시점 크루 상세 | AppBar에 ✏️ 버튼 | ref=e46 버튼 표시됨 | ✅ |
-| 2 | 수정 BottomSheet | ✏️ 탭 | 이름/지역/소개/인원 폼 | 정상 (기존값 입력됨 + 휠 피커) | ✅ |
-| 3 | 멤버 퇴출 ✕ | 리더 시점 멤버 목록 | 리더 본인 ✕ 없음 | 1인 크루에서 ✕ 미표시 (정상) | ✅ |
-| 4 | 챌린지 빈 상태 문구 | 리더 시점 | "아래 버튼으로 새 챌린지를..." | 정상 표시 | ✅ |
+| 1 | 홈 워치 카드 (웹) | kIsWeb | 카드 숨김 | 홈에 워치 카드 미표시 (정상) | ✅ |
+| 2 | BLE 온보딩 라우팅 | /onboarding/ble | 페이지 표시 | 정상 렌더링 | ✅ |
+| 3 | BLE 온보딩 (웹) | kIsWeb | "모바일에서만" 안내 | ⌚ + 안내 문구 + 홈으로 버튼 | ✅ |
+| 4 | 홈으로 이동 | 홈으로 버튼 탭 | /home 이동 | 정상 이동 | ✅ |
+| 5 | 워치 카드 데이터 표시 | Android + Health Connect | 워치 기록 미리보기 | 실기기 필요 | ⏭ |
+| 6 | BLE 스캔 + 기기 연결 | Android + BLE | 기기 목록 + 연결 | 실기기 필요 | ⏭ |
 
 ## 발견된 이슈
 
-없음 (이전 블로커였던 Firestore 권한 문제 해결됨)
+없음
 
 ## 스크린샷
-- `qa_crew_detail_leader_20260407.png` — 크루 상세 (수정 버튼 + 리더 탈퇴 비활성화)
-- `qa_crew_edit_sheet_20260407.png` — 수정 BottomSheet
-- `qa_crew_challenge_leader_20260407.png` — 챌린지 빈 상태 (리더 문구)
+- `qa_ble_onboarding_web_20260410.png` — BLE 온보딩 웹 안내 화면
 
 ## 다음 액션
-- 없음 (전체 통과)
+- [ ] Android 실기기에서 워치 카드 데이터 표시 + 전체 동기화 테스트
+- [ ] Android 실기기에서 BLE 스캔 + Galaxy Watch 연결 테스트

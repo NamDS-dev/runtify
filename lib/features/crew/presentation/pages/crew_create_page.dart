@@ -52,8 +52,43 @@ class _CrewCreatePageState extends ConsumerState<CrewCreatePage> {
     final user = ref.read(authProvider).valueOrNull;
     if (user == null) return;
 
+    final name = _nameController.text.trim();
+
+    // 크루명 중복 체크
+    bool isTaken = false;
+    try {
+      final datasource = ref.read(crewDataSourceProvider);
+      isTaken = await datasource.isCrewNameTaken(name);
+    } catch (e) {
+      debugPrint('크루명 중복 체크 실패: $e');
+      // 체크 실패 시 생성 진행 (네트워크 오류 등)
+    }
+    if (!mounted) return;
+
+    if (isTaken) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            '이미 사용 중인 크루 이름입니다',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: const Color(0xFFFF3333),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     final crew = await ref.read(crewActionsProvider.notifier).createCrew(
-          name: _nameController.text.trim(),
+          name: name,
           region: _regionDisplay,
           description: _descriptionController.text.trim(),
           maxMembers: _maxMembers,
@@ -70,8 +105,19 @@ class _CrewCreatePageState extends ConsumerState<CrewCreatePage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${crew.name} 크루를 만들었어요!'),
+          content: Text(
+            '${crew.name} 크루를 만들었어요!',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           backgroundColor: AppTheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         ),
       );
       // 크루 목록으로 이동

@@ -93,6 +93,15 @@ class CrewFirestoreDataSource {
     return members;
   }
 
+  // ── 크루명 중복 체크 ───────────────────────────────────────────────────────
+  Future<bool> isCrewNameTaken(String name) async {
+    final snapshot = await _crewsRef
+        .where('name', isEqualTo: name)
+        .limit(1)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
   // ── 크루 생성 ─────────────────────────────────────────────────────────────
   // 생성자가 자동으로 첫 번째 멤버이자 리더가 됨
   Future<CrewEntity> createCrew({

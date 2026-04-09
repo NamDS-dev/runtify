@@ -1,32 +1,33 @@
 ---
-feature: 크루 고도화 (정보 수정 + 리더 검증 + 멤버 퇴출 + UX 문구)
+feature: 워치 동기화 홈 카드 + BLE 심박수 온보딩
 status: done
 analyze: pass
-date: 2026-04-07
+date: 2026-04-10
 ---
 
 ## 변경된 파일
 
+### 신규 생성
+- `lib/features/onboarding/presentation/pages/ble_onboarding_page.dart` — BLE 기기 스캔 → 목록 → 연결
+
 ### 수정
-- `lib/features/crew/data/datasources/crew_firestore_datasource.dart`
-  - leaveCrew(): 리더 탈퇴 방지 Firestore 검증 추가
-  - updateCrew(): 크루 정보 수정 메서드 추가
-  - kickMember(): 멤버 강제 퇴출 메서드 추가
-- `lib/features/crew/presentation/providers/crew_provider.dart`
-  - updateCrew(), kickMember() 액션 추가
-- `lib/features/crew/presentation/pages/crew_detail_page.dart`
-  - AppBar에 수정 버튼 (리더 전용)
-  - 수정 BottomSheet (이름/지역 휠피커/소개/인원)
-  - 멤버 목록에 ✕ 퇴출 아이콘 (리더 전용, 리더 본인 제외)
-  - 퇴출 확인 다이얼로그
-- `lib/features/crew/presentation/pages/crew_challenge_page.dart`
-  - 빈 챌린지 상태 문구: 리더/비리더 구분
+- `lib/features/running/presentation/pages/home_page.dart` — _WatchSyncCard 위젯 추가
+- `lib/core/router/app_router.dart` — /onboarding/ble 라우트 추가
 
 ## 주요 구현 결정사항
-- leaveCrew()에서 Firestore 트랜잭션 내 leaderId 검증 (UI+서버 이중 검증)
-- 멤버 퇴출 시 확인 다이얼로그 필수 (실수 방지)
-- 크루 수정 BottomSheet에서 지역 선택은 korea_regions.dart 휠 피커 재사용
-- 비리더 챌린지 안내: "크루 리더가 곧 챌린지를 시작할 거예요 🔥"
+
+### 워치 동기화 카드
+- 홈에 조건부 표시: `!kIsWeb && Health Connect 권한 있을 때`만
+- HealthConnectDataSource.getRecentSessions()로 워치 기록 조회
+- 최근 2건 미리보기 (거리/시간/심박수 + 날짜)
+- "전체 기록 가져오기" → Firestore에 저장 (중복 세션은 saveSession에서 스킵)
+
+### BLE 온보딩
+- FlutterBluePlus.startScan()으로 Heart Rate Service(0x180D) 기기 스캔
+- 기기 목록 표시 (신호 강도별 UI 차별화 — 강함: #252525, 약함: #1A1A1A)
+- 연결 탭 → connect() → SharedPreferences에 기기 ID/이름 저장
+- 온보딩에서는 연결 확인만 하고 disconnect (실제 연결은 러닝 시)
+- 기기 못 찾을 시 "삼성 헬스 앱이 실행 중인지 확인" 안내
 
 ## 정적 분석 결과
 ```

@@ -398,21 +398,56 @@ Phase 4 (홈 지역 설정 UI) → Phase 5 (랭킹 기여 지역 분리) → Pha
 
 ---
 
-## 미결정 사항
-
-- [ ] 리워드 쿠폰 코드: 자동 생성 난수? 외부 API 연동?
-- [ ] 러닝 목표 기능: 월간 목표 거리만? 횟수/칼로리도?
-
 ---
 
-## 추후 기획 (Post-MVP)
+## 출시 로드맵
 
-### 웨어러블 연동 확장
-- [ ] **Garmin Connect API 연동** — 가민 워치 유저 기록 자동 동기화
-  - Garmin OAuth 인증 → 러닝 데이터 자동 가져오기
-  - Strava/Adidas Running과 동일한 패턴 (워치 앱 개발 불필요)
-- [ ] **Apple HealthKit 연동** — Apple Watch 유저 지원 (Apple Developer 계정 필요)
-- [ ] **Samsung Health SDK 고도화** — Galaxy Watch 심박/케이던스 실시간 연동
+### 🚀 1차 출시 — Android + Galaxy Watch
+> 목표: Play Store 출시 + 갤럭시 워치 연동
+> 
+> **기술 경로:** Samsung Health SDK 직접 사용 불필요.
+> Galaxy Watch → 삼성 헬스 앱(폰) → Health Connect → Runtify (`health` 패키지)
+> 실시간 심박수: BLE HRM → `flutter_blue_plus` (이미 구현)
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| Android 앱 | ✅ 완료 | Flutter 빌드 |
+| Health Connect 연동 코드 | ✅ 완료 | `health_connect_datasource.dart` |
+| BLE 심박수 연동 코드 | ✅ 완료 | `heart_rate_ble_datasource.dart` |
+| Health Connect 온보딩 UI | ⬜ 개발 필요 | 유저에게 Health Connect + 삼성 헬스 동기화 안내 |
+| 워치 러닝 기록 홈 연동 | ⬜ 개발 필요 | Health Connect 과거 데이터 → 홈 대시보드 표시 |
+| BLE 연결 온보딩 UI | ⬜ 개발 필요 | 갤럭시 워치 심박수 페어링 안내 |
+| Play Store 출시 | ⬜ 준비 필요 | 스토어 등록, 스크린샷, 설명 |
+
+### 📱 2차 업데이트 — iOS 출시
+> 목표: App Store 출시 (코드 이미 완성, 계정 등록만)
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| iOS 앱 코드 | ✅ 완료 | Flutter 크로스 플랫폼 |
+| Apple Developer 등록 | ⬜ 필요 | $99/년, developer.apple.com |
+| Apple 로그인 활성화 | ⬜ 필요 | 소셜 로그인 제공 시 필수 (App Store 정책) |
+| App Store 심사 | ⬜ 필요 | 회원 탈퇴 기능 등 심사 요구사항 확인 |
+
+### ⌚ 3차 업데이트 — Apple HealthKit
+> 목표: Apple Watch 유저 러닝 데이터 연동
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| Apple HealthKit 연동 | ⬜ 개발 필요 | iOS 유저 확보 후 진행 |
+| Apple Watch 심박/거리 동기화 | ⬜ 개발 필요 | HealthKit 읽기 권한 |
+
+### ⌚ 4차 업데이트 — Garmin Connect API
+> 목표: 하드코어 러너(Garmin 유저) 확보
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| Garmin Connect API 연동 | ⬜ 개발 필요 | OAuth 인증 → 자동 동기화 |
+| Garmin 워치 앱 개발 | ❌ 불필요 | Strava와 동일 패턴 (API만) |
+
+### 추후 검토
+- [ ] 리워드 쿠폰 코드: 자동 생성 난수? 외부 API 연동?
+- [ ] Coros/Suunto 등 기타 워치 연동
 
 ---
 
