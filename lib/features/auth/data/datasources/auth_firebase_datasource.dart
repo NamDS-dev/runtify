@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import '../../../../core/validators/email_validator.dart';
 import '../models/user_model.dart';
 import 'auth_remote_datasource.dart';
 
@@ -23,8 +24,10 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
   @override
   Future<UserModel> signInWithEmail(String email, String password) async {
     try {
+      // 방어적 정규화 — 상위 레이어에서 실수로 trim/lowercase를 놓쳐도 안전
+      final normalizedEmail = EmailValidator.normalize(email);
       final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
+        email: normalizedEmail,
         password: password,
       );
 
@@ -42,9 +45,12 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
     String name,
   ) async {
     try {
+      // 가입 시점부터 정규화된 이메일로 저장해 이후 로그인 매칭 문제 예방
+      final normalizedEmail = EmailValidator.normalize(email);
+
       // Firebase Auth에 계정 생성
       final credential = await _auth.createUserWithEmailAndPassword(
-        email: email,
+        email: normalizedEmail,
         password: password,
       );
 
@@ -54,7 +60,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
       final newUser = UserModel(
         id: uid,
         name: name,
-        email: email,
+        email: normalizedEmail,
         experience: 0,
         points: 0,
         level: 1,

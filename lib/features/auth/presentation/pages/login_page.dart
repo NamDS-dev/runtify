@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/validators/email_validator.dart';
 import '../providers/auth_provider.dart';
 
 // 로그인 화면
@@ -37,15 +38,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final authNotifier = ref.read(authProvider.notifier);
     String? errorMessage;
 
+    // 이메일은 서버 전달 직전 일관된 형태(소문자/trim)로 정규화
+    final normalizedEmail = EmailValidator.normalize(_emailController.text);
+
     if (_isSignUpMode) {
       errorMessage = await authNotifier.signUp(
-        _emailController.text.trim(),
+        normalizedEmail,
         _passwordController.text.trim(),
         _nameController.text.trim(),
       );
     } else {
       errorMessage = await authNotifier.signIn(
-        _emailController.text.trim(),
+        normalizedEmail,
         _passwordController.text.trim(),
       );
     }
@@ -120,8 +124,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   label: '이메일',
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
-                  validator: (v) =>
-                      v!.isEmpty ? '이메일을 입력해주세요' : null,
+                  validator: EmailValidator.validate,
                 ),
                 const SizedBox(height: 16),
 
