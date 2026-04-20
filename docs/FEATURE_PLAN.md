@@ -339,6 +339,29 @@ running_sessions/{id}
 
 ---
 
+## UI/UX 개선 과제
+
+> 버그와 구분되는 개선 기획. 디자인 작업 + 소규모 코드 변경으로 처리.
+
+### 🎨 지도 스타일 컬러화
+- **현재:** 러닝 지도 화면이 흑백(다크 모노크롬) 스타일로 표시
+- **목표:** 도로/건물/공원 등 색상 구분되는 **컬러 지도**로 변경
+- **디자인 결정 필요:**
+  - 다크 모드 앱 테마와 조화로운 컬러 지도 스타일 (너무 밝지 않게)
+  - Runtify 브랜드 컬러(Primary `#FF4D00`)와 충돌 없는 지도 배경
+  - 러닝 경로 폴리라인은 기존 Primary 컬러 유지 → 지도 위에서 잘 보여야 함
+- **영향 화면:**
+  - 러닝 중 지도 (`running_page.dart`)
+  - 러닝 완료 결과 지도 (`running_result_page.dart`)
+  - 러닝 기록 상세 지도
+  - 런닝 코스 상세 지도 (Phase 8)
+- **작업 순서:**
+  1. `/project:design` — Figma에서 컬러 지도 스타일 샘플 비교
+  2. Google Maps Style JSON 생성 (https://mapstyle.withgoogle.com)
+  3. `/project:coding` — 각 지도 위젯에 `mapStyle` 적용
+
+---
+
 ## 확정된 설계 결정사항
 
 | 항목 | 결정 |
@@ -419,6 +442,12 @@ Phase 4 (홈 지역 설정 UI) → Phase 5 (랭킹 기여 지역 분리) → Pha
 | BLE 연결 온보딩 UI | ⬜ 개발 필요 | 갤럭시 워치 심박수 페어링 안내 |
 | Play Store 출시 | ⬜ 준비 필요 | 스토어 등록, 스크린샷, 설명 |
 
+#### Android 실기기 테스트 이슈 (2026-04-19 발견)
+- [ ] 🔴 **러닝 중 GPS 위치 업데이트 안 됨** — 시간은 정상 카운트, 거리가 0km 고정, 지도 내 위치 이동 없음
+  - 원인 추정: `geolocator` stream 초기화 실패, 백그라운드 위치 권한(`ACCESS_BACKGROUND_LOCATION`) 미허용, 또는 위치 서비스 빈도 설정(`LocationAccuracy`, `distanceFilter`) 이슈
+  - 확인 파일: `lib/features/running/presentation/pages/running_page.dart` 의 GPS stream 구독부, `android/app/src/main/AndroidManifest.xml` 권한 선언
+  - 재현: 앱 실행 → 러닝 시작 → 걷거나 뜀 → 화면상 거리 0.00km 유지
+
 ### 📱 2차 업데이트 — iOS 출시
 > 목표: App Store 출시 (코드 이미 완성, 계정 등록만)
 
@@ -428,6 +457,22 @@ Phase 4 (홈 지역 설정 UI) → Phase 5 (랭킹 기여 지역 분리) → Pha
 | Apple Developer 등록 | ⬜ 필요 | $99/년, developer.apple.com |
 | Apple 로그인 활성화 | ⬜ 필요 | 소셜 로그인 제공 시 필수 (App Store 정책) |
 | App Store 심사 | ⬜ 필요 | 회원 탈퇴 기능 등 심사 요구사항 확인 |
+
+#### iOS 실기기 테스트 이슈 (2026-04-19 발견)
+- [x] ✅ **iPhone 17 Pro Max 화면 비율 대응** (2026-04-19 수정 완료, 시뮬레이터 검증)
+  - 진짜 원인: `lib/main.dart`의 `MaterialApp.builder`에 **`ConstrainedBox(maxWidth: 390)` + `ColoredBox(black)`** 하드코딩 → iOS/Android 실기에서도 390px로 제한 + 검은 레터박스
+  - 수정: 플랫폼 분기 (`kIsWeb`, `Platform.isMacOS/Windows/Linux` 일 때만 중앙 정렬 적용) — 모바일은 네이티브 너비 사용
+  - 부가 개선: iOS deployment target 13→15, `UILaunchScreen` 추가, LaunchScreen.storyboard Xcode 16 표준으로 재작성
+- [x] ✅ **iOS 엣지 스와이프 뒤로가기 미동작** (2026-04-20 수정 완료, analyze+test 통과)
+  - 원인: go_router에서 모든 라우트가 `MaterialPage` 사용 → iOS에서 스와이프 제스처 비활성
+  - 수정: `lib/core/router/app_router.dart`에 `_platformPage()` 헬퍼 추가 — iOS는 `CupertinoPage`, 그 외는 `MaterialPage`로 분기. 모든 `GoRoute`의 `builder`를 `pageBuilder`로 전환
+  - 검증 필요: 실기기에서 좌측 엣지 스와이프 동작 확인 (시뮬레이터에서도 동작)
+- [x] ✅ **러닝 시작 후 경과 시간 미증가** (2026-04-19 수정 완료, 시뮬레이터 검증)
+  - 원인: `Timer.periodic` 등록이 `await _notificationService.requestPermission()` 뒤에 있어 iOS에서 권한 요청 hang 시 타이머 자체가 등록 안 됨
+  - 수정: 타이머를 알림 권한 요청보다 먼저 등록 + `fire-and-forget` 패턴 + Timer 콜백에 `mounted` 체크/try-catch 추가
+- [ ] 🔴 **러닝 중 백그라운드 복귀 시 크래시** — 러닝 시작 → 홈(백그라운드) → 앱 복귀 시 즉시 종료
+  - 원인 추정: `WidgetsBindingObserver` 복귀 처리 누락, GPS/BLE 스트림 재구독 실패, UIBackgroundModes(`location`)에 대응하는 Xcode Capability: **Background Modes → Location updates** 미설정 가능성
+  - 확인 파일: `lib/features/running/presentation/pages/running_page.dart`, Xcode `Signing & Capabilities`
 
 ### ⌚ 3차 업데이트 — Apple HealthKit
 > 목표: Apple Watch 유저 러닝 데이터 연동
@@ -444,6 +489,24 @@ Phase 4 (홈 지역 설정 UI) → Phase 5 (랭킹 기여 지역 분리) → Pha
 |------|------|------|
 | Garmin Connect API 연동 | ⬜ 개발 필요 | OAuth 인증 → 자동 동기화 |
 | Garmin 워치 앱 개발 | ❌ 불필요 | Strava와 동일 패턴 (API만) |
+
+### 크루 소셜 기능 (Strava 대비 보완)
+> 현재 Runtify 크루 = 경쟁 그룹 (포인트/챌린지/랭킹)
+> 부족한 부분 = 소셜 (게시글/이벤트/채팅)
+
+| 우선순위 | 기능 | 설명 | 상태 |
+|----------|------|------|------|
+| 🔴 1 | **크루 게시글/피드** | 글쓰기, 사진, 댓글, 좋아요 | ⬜ |
+| 🔴 2 | **크루 이벤트** | 날짜/장소/루트 지정 그룹 러닝 모집 + 참가하기 | ✅ |
+| 🔴 3 | **크루 멤버 관리** | 멤버 목록 전용 화면, 역할 표시, 가입 일자, 기여도(거리/포인트), 퇴출 확인 | ⬜ |
+| 🟡 4 | **공개/비공개 크루** | 가입 승인제 (현재 모두 공개) | ⬜ |
+
+### 러닝 데이터 정책
+```
+크루 미가입: 개인 러닝 데이터만 저장
+크루 가입:   개인 러닝 + 크루 러닝 데이터 동시 저장 (자동, 모드 선택 없음)
+```
+- 크루 소속 시 러닝하면 개인 포인트 + 크루 포인트 자동 적립 (현재 구현 완료)
 
 ### 추후 검토
 - [ ] 리워드 쿠폰 코드: 자동 생성 난수? 외부 API 연동?
