@@ -43,6 +43,7 @@
 
 | 날짜 | Phase | 작업 | 비고 |
 |------|-------|------|------|
+| 2026-04-20 | iOS 이슈 | iOS 엣지 스와이프 뒤로가기 | app_router.dart에 CupertinoPage 플랫폼 분기 (실기기 최종 확인 대기) |
 | 2026-03-20 | 2 | 크루 Firebase 연동 | Repository/UseCase 완성, 홈 크루 카드, 가입/탈퇴 로직 |
 | 2026-03-19 | 9 | 목표(Goals) 기능 | Firestore 서브컬렉션, 진행률 UI, Dismissible 스와이프 삭제 |
 | 2026-03-19 | 4 | 프로필 홈 지역 설정 | GPS + 역지오코딩, Firestore homeRegion 저장 |
