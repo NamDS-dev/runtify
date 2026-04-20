@@ -1,10 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../../core/validators/email_validator.dart';
 import '../models/user_model.dart';
 import 'auth_remote_datasource.dart';
+
+// 로그아웃 시 삭제해야 하는 SharedPreferences 키 목록
+// 사용자별 데이터(BLE 페어링, 온보딩 완료 상태 등) → 다른 계정 로그인 시 초기화 필요
+// 테마는 UI 선호도라 유지 (별도 계정과 무관한 기기 설정)
+const List<String> _userScopedPrefsKeys = [
+  'ble_device_id',
+  'ble_device_name',
+  'ble_onboarding_done',
+  'health_connect_onboarding_done',
+];
 
 // Firebase Auth + Firestore 실제 구현체
 class AuthFirebaseDataSource implements AuthRemoteDataSource {
@@ -160,9 +171,24 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
 
   @override
   Future<void> signOut() async {
-    // Google 세션도 함께 로그아웃
-    await GoogleSignIn().signOut();
-    await _auth.signOut();
+    // 각 단계가 실패해도 나머지 cleanup은 반드시 수행 — 부분 실패 시 계정 전환이 막히는 일 방지
+    // Google 세션 정리 (비-Google 사용자는 no-op 가능하므로 예외 흡수)
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
+
+    // Firebase Auth 세션 종료 — 실패해도 로컬 캐시는 지워야 함
+    try {
+      await _auth.signOut();
+    } catch (_) {}
+
+    // 공유 기기에서 이전 사용자 BLE 페어링/온보딩 상태가 노출되지 않도록 사용자 scope 키만 제거
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final key in _userScopedPrefsKeys) {
+        await prefs.remove(key);
+      }
+    } catch (_) {}
   }
 
   @override
