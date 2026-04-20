@@ -1,6 +1,6 @@
 ---
-date: 2026-04-10
-target: 워치 동기화 홈 카드 + BLE 심박수 온보딩
+date: 2026-04-12
+target: 크루 이벤트 (그룹 러닝 모집)
 result: pass
 ---
 
@@ -8,24 +8,27 @@ result: pass
 - flutter analyze: ✅ pass (0 issues)
 - flutter test: ✅ pass (1 passed)
 
+## 사전 조치
+- crew_detail_page 정보 탭에 이벤트 진입 카드 추가 (QA 중 발견 → 즉시 수정)
+- Firestore Rules: events 서브컬렉션 규칙 배포
+
 ## 테스트 케이스
 
 | # | 케이스 | 조건 | 기대 결과 | 실제 결과 | 상태 |
 |---|--------|------|-----------|-----------|------|
-| 1 | 홈 워치 카드 (웹) | kIsWeb | 카드 숨김 | 홈에 워치 카드 미표시 (정상) | ✅ |
-| 2 | BLE 온보딩 라우팅 | /onboarding/ble | 페이지 표시 | 정상 렌더링 | ✅ |
-| 3 | BLE 온보딩 (웹) | kIsWeb | "모바일에서만" 안내 | ⌚ + 안내 문구 + 홈으로 버튼 | ✅ |
-| 4 | 홈으로 이동 | 홈으로 버튼 탭 | /home 이동 | 정상 이동 | ✅ |
-| 5 | 워치 카드 데이터 표시 | Android + Health Connect | 워치 기록 미리보기 | 실기기 필요 | ⏭ |
-| 6 | BLE 스캔 + 기기 연결 | Android + BLE | 기기 목록 + 연결 | 실기기 필요 | ⏭ |
+| 1 | 이벤트 진입 카드 | 크루 상세 정보 탭 | "📅 크루 이벤트" 카드 | 정상 (위클리 챌린지 아래) | ✅ |
+| 2 | 빈 상태 | 이벤트 없음 | "아직 이벤트가 없어요" + FAB | 정상 | ✅ |
+| 3 | 생성 BottomSheet | FAB 탭 | 제목/날짜/시간/장소 폼 | 정상 (30자 제한, 캘린더, 휠 피커) | ✅ |
+| 4 | 이벤트 생성 | 폼 입력 후 생성 | 목록에 카드 표시 + SnackBar | 정상 (1명 참가 + 참가 취소 버튼) | ✅ |
 
-## 발견된 이슈
+## 발견 + 해결된 이슈
 
-없음
+| 우선순위 | 이슈 | 조치 |
+|----------|------|------|
+| 🔴 | 이벤트 진입점 없음 | ✅ crew_detail_page에 이벤트 카드 추가 |
 
 ## 스크린샷
-- `qa_ble_onboarding_web_20260410.png` — BLE 온보딩 웹 안내 화면
-
-## 다음 액션
-- [ ] Android 실기기에서 워치 카드 데이터 표시 + 전체 동기화 테스트
-- [ ] Android 실기기에서 BLE 스캔 + Galaxy Watch 연결 테스트
+- `qa_crew_event_entry_20260412.png` — 정보 탭 이벤트 진입 카드
+- `qa_crew_event_empty_20260412.png` — 빈 상태
+- `qa_crew_event_create_20260412.png` — 생성 BottomSheet
+- `qa_crew_event_created_20260412.png` — 이벤트 생성 완료 + 목록

@@ -44,6 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# 릴리스 서명 키
+android/key.properties
+*.jks
+*.keystore
+
 # Firebase 설정 파일 (API 키 포함 — 공개 저장소 업로드 금지)
 lib/firebase_options.dart
 lib/firebase_options_dev.dart

@@ -1,0 +1,21 @@
+- generic [ref=e5] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button "Back" [ref=e32]
+            - heading "QA테스트크루" [level=2]
+            - button [ref=e33]
+            - tablist:
+              - tab "정보" [ref=e34]
+              - tab "게시글" [ref=e35]
+              - tab "멤버" [active] [selected] [ref=e36]
+          - generic:
+            - generic:
+              - tabpanel:
+                - generic:
+                  - group:
+                    - generic:
+                      - generic: 1 QA테스터 0P
+          - button [ref=e38]

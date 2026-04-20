@@ -1,0 +1,65 @@
+- generic [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button [ref=e16]
+            - heading "프로필" [level=2]
+          - group:
+            - generic:
+              - generic: Q
+            - generic:
+              - generic: QA테스터
+            - generic:
+              - generic: qa.test@runtify.dev
+            - generic:
+              - generic: Lv.1
+            - generic:
+              - generic: 다음 레벨까지 100 EXP
+            - progressbar "0"
+            - generic:
+              - generic: 0 EXP
+            - generic:
+              - generic: 0P
+            - generic:
+              - generic: 0.0km
+            - generic:
+              - generic: "0"
+            - generic:
+              - generic: 포인트
+            - generic:
+              - generic: 총 거리
+            - generic:
+              - generic: 경험치
+            - generic:
+              - generic: 🏅 내 배지
+            - generic:
+              - generic: 0 / 6
+            - generic:
+              - generic:
+                - generic:
+                  - generic: 🔒 불꽃 러너 7일 연속 런닝
+                - generic:
+                  - generic: 🔒 새벽 러너 6시 이전 10회
+                - generic:
+                  - generic: 🔒 스피드 마스터 4'30"/km 이하 5km
+                - generic:
+                  - generic: 🔒 지역 지킴이 구 월간 1위
+                - generic:
+                  - generic: 🔒 원정대 5개 구 러닝
+                - generic:
+                  - generic: 🔒 100km 클럽 누적 100km 달성
+            - generic:
+              - generic: 내 지역
+            - button "지역 설정" [ref=e17]
+            - generic:
+              - generic: 지역이 설정되지 않았습니다
+            - generic:
+              - generic: GPS로 현재 위치를 감지해 랭킹에 반영됩니다
+            - generic:
+              - generic: 테마 설정
+            - button "라이트" [ref=e18]
+            - button "다크" [ref=e19]
+            - button "기기 설정" [ref=e20]
+            - button "로그아웃" [active] [ref=e21]

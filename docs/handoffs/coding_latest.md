@@ -1,33 +1,37 @@
 ---
-feature: 워치 동기화 홈 카드 + BLE 심박수 온보딩
+feature: 크루 이벤트 (그룹 러닝 모집)
 status: done
 analyze: pass
-date: 2026-04-10
+date: 2026-04-12
 ---
 
 ## 변경된 파일
 
 ### 신규 생성
-- `lib/features/onboarding/presentation/pages/ble_onboarding_page.dart` — BLE 기기 스캔 → 목록 → 연결
+- `lib/features/crew/domain/entities/event_entity.dart` — CrewEventEntity
+- `lib/features/crew/presentation/providers/event_provider.dart` — crewEventsProvider
+- `lib/features/crew/presentation/pages/crew_event_page.dart` — 이벤트 목록 + 생성 BottomSheet
 
 ### 수정
-- `lib/features/running/presentation/pages/home_page.dart` — _WatchSyncCard 위젯 추가
-- `lib/core/router/app_router.dart` — /onboarding/ble 라우트 추가
+- `lib/features/crew/data/datasources/crew_firestore_datasource.dart` — watchEvents, createEvent, toggleEventParticipation
+- `lib/core/router/app_router.dart` — /crew/events 라우트
+- `firestore.rules` — events 서브컬렉션 규칙 + 배포
+
+## Firestore 구조
+```
+crews/{crewId}/events/{eventId}
+  crewId, title, date, locationName, participantIds[], createdBy, createdAt
+```
 
 ## 주요 구현 결정사항
-
-### 워치 동기화 카드
-- 홈에 조건부 표시: `!kIsWeb && Health Connect 권한 있을 때`만
-- HealthConnectDataSource.getRecentSessions()로 워치 기록 조회
-- 최근 2건 미리보기 (거리/시간/심박수 + 날짜)
-- "전체 기록 가져오기" → Firestore에 저장 (중복 세션은 saveSession에서 스킵)
-
-### BLE 온보딩
-- FlutterBluePlus.startScan()으로 Heart Rate Service(0x180D) 기기 스캔
-- 기기 목록 표시 (신호 강도별 UI 차별화 — 강함: #252525, 약함: #1A1A1A)
-- 연결 탭 → connect() → SharedPreferences에 기기 ID/이름 저장
-- 온보딩에서는 연결 확인만 하고 disconnect (실제 연결은 러닝 시)
-- 기기 못 찾을 시 "삼성 헬스 앱이 실행 중인지 확인" 안내
+- 이벤트 제목 30자 제한 + content_validator 검증
+- 날짜: showDatePicker (Flutter 캘린더)
+- 시간: CupertinoPicker 휠 피커 (5분 단위, 오전/오후 표시)
+- 참가하기: participantIds에 userId toggle (arrayUnion/arrayRemove)
+- 생성자 자동 참가 (participantIds 초기값에 createdBy 포함)
+- 다가오는/지난 이벤트 자동 분리 (date > now → upcoming)
+- 이벤트 만들기 FAB: 리더에게만 표시
+- 비리더 빈 상태: "크루 리더가 곧 이벤트를 만들 거예요!"
 
 ## 정적 분석 결과
 ```

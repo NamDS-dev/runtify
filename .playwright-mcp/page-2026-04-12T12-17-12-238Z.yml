@@ -1,0 +1,14 @@
+- generic [active] [ref=e5] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - button "Scrim" [ref=e27]
+        - generic [ref=e28]:
+          - generic:
+            - generic:
+              - generic: ✏️ 게시글 작성
+            - generic [ref=e29]:
+              - textbox "크루원들에게 공유하고 싶은 이야기를 자유롭게 작성해주세요..." [ref=e30]
+              - generic:
+                - generic: 500 characters remaining
+            - button "게시하기" [ref=e31]

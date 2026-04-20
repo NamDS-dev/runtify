@@ -1,0 +1,30 @@
+- generic [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button "Back" [active] [ref=e19]
+            - heading "QA테스트크루" [level=2]
+            - button [ref=e20]
+            - tablist:
+              - tab "정보" [selected] [ref=e21]
+              - tab "게시글" [ref=e22]
+              - tab "멤버" [ref=e23]
+          - generic:
+            - generic:
+              - tabpanel:
+                - group:
+                  - generic:
+                    - generic: QA테스트크루
+                  - generic:
+                    - generic: 서울특별시 강남구
+                  - generic:
+                    - generic: 1/20명
+                  - generic:
+                    - generic: 🔥
+                  - generic:
+                    - generic: 이번 달 0P
+                  - button "위클리 챌린지 챌린지에 도전해보세요!" [ref=e24]
+                  - button "크루장은 탈퇴할 수 없어요" [disabled] [ref=e25]
+          - button [ref=e26]

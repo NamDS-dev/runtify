@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/challenge_entity.dart';
 import '../../domain/entities/crew_entity.dart';
+import '../../domain/entities/event_entity.dart';
+import '../../domain/entities/join_request_entity.dart';
+import '../../domain/entities/post_entity.dart';
 import '../models/challenge_model.dart';
 
 // 크루 멤버 표시용 간단 데이터 (이름 + 포인트)
@@ -239,6 +242,202 @@ class CrewFirestoreDataSource {
       });
       transaction.update(userRef, {'crewId': FieldValue.delete()});
     });
+  }
+
+  // ── 가입 신청 서브컬렉션 ───────────────────────────────────────────────────
+  CollectionReference<Map<String, dynamic>> _joinRequestsRef(String crewId) =>
+      _crewsRef.doc(crewId).collection('joinRequests');
+
+  // 가입 신청
+  Future<void> requestJoinCrew({
+    required String crewId,
+    required String userId,
+    required String userName,
+  }) async {
+    await _joinRequestsRef(crewId).doc(userId).set({
+      'userId': userId,
+      'userName': userName,
+      'requestedAt': FieldValue.serverTimestamp(),
+      'status': 'pending',
+    });
+  }
+
+  // 가입 신청 취소
+  Future<void> cancelJoinRequest({
+    required String crewId,
+    required String userId,
+  }) async {
+    await _joinRequestsRef(crewId).doc(userId).delete();
+  }
+
+  // 가입 신청 상태 확인 (특정 유저)
+  Future<JoinRequestEntity?> getJoinRequestStatus({
+    required String crewId,
+    required String userId,
+  }) async {
+    final doc = await _joinRequestsRef(crewId).doc(userId).get();
+    if (!doc.exists) return null;
+    return JoinRequestEntity.fromFirestore(doc.data()!);
+  }
+
+  // 대기 중인 가입 신청 목록 (리더용)
+  Stream<List<JoinRequestEntity>> watchPendingRequests(String crewId) {
+    return _joinRequestsRef(crewId)
+        .where('status', isEqualTo: 'pending')
+        .orderBy('requestedAt', descending: false)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => JoinRequestEntity.fromFirestore(doc.data()))
+            .toList());
+  }
+
+  // 가입 승인 (리더 전용) — 신청 상태 변경 + 실제 가입 처리
+  Future<void> approveJoinRequest({
+    required String crewId,
+    required String userId,
+  }) async {
+    await _firestore.runTransaction((transaction) async {
+      final crewRef = _crewsRef.doc(crewId);
+      final userRef = _usersRef.doc(userId);
+      final requestRef = _joinRequestsRef(crewId).doc(userId);
+
+      // 정원 확인
+      final crewDoc = await transaction.get(crewRef);
+      final memberIds = List<String>.from(crewDoc.data()?['memberIds'] ?? []);
+      final maxMembers = (crewDoc.data()?['maxMembers'] as num?)?.toInt() ?? 20;
+      if (memberIds.length >= maxMembers) {
+        throw Exception('크루 인원이 가득 찼습니다');
+      }
+
+      // 신청 상태 → approved
+      transaction.update(requestRef, {'status': 'approved'});
+      // 멤버 추가
+      transaction.update(crewRef, {
+        'memberIds': FieldValue.arrayUnion([userId]),
+      });
+      // 유저 crewId 설정
+      transaction.update(userRef, {'crewId': crewId});
+    });
+  }
+
+  // 가입 거절 (리더 전용)
+  Future<void> rejectJoinRequest({
+    required String crewId,
+    required String userId,
+  }) async {
+    await _joinRequestsRef(crewId).doc(userId).update({
+      'status': 'rejected',
+    });
+  }
+
+  // ── 이벤트 서브컬렉션 ─────────────────────────────────────────────────────
+  CollectionReference<Map<String, dynamic>> _eventsRef(String crewId) =>
+      _crewsRef.doc(crewId).collection('events');
+
+  // 이벤트 목록 실시간 조회 (날짜순)
+  Stream<List<CrewEventEntity>> watchEvents(String crewId) {
+    return _eventsRef(crewId)
+        .orderBy('date', descending: false)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => CrewEventEntity.fromFirestore(doc.data(), doc.id))
+            .toList());
+  }
+
+  // 이벤트 생성
+  Future<void> createEvent({
+    required String crewId,
+    required String title,
+    required DateTime date,
+    required String locationName,
+    required String createdBy,
+  }) async {
+    await _eventsRef(crewId).add({
+      'crewId': crewId,
+      'title': title,
+      'date': date,
+      'locationName': locationName,
+      'participantIds': [createdBy], // 생성자 자동 참가
+      'createdBy': createdBy,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // 이벤트 참가/취소 토글
+  Future<void> toggleEventParticipation({
+    required String crewId,
+    required String eventId,
+    required String userId,
+  }) async {
+    final eventRef = _eventsRef(crewId).doc(eventId);
+    final doc = await eventRef.get();
+    final participants = List<String>.from(doc.data()?['participantIds'] ?? []);
+
+    if (participants.contains(userId)) {
+      await eventRef.update({'participantIds': FieldValue.arrayRemove([userId])});
+    } else {
+      await eventRef.update({'participantIds': FieldValue.arrayUnion([userId])});
+    }
+  }
+
+  // ── 게시글 서브컬렉션 ─────────────────────────────────────────────────────
+  CollectionReference<Map<String, dynamic>> _postsRef(String crewId) =>
+      _crewsRef.doc(crewId).collection('posts');
+
+  // 게시글 목록 실시간 조회 (최신순)
+  Stream<List<PostEntity>> watchPosts(String crewId) {
+    return _postsRef(crewId)
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => PostEntity.fromFirestore(doc.data(), doc.id))
+            .toList());
+  }
+
+  // 게시글 작성
+  Future<void> createPost({
+    required String crewId,
+    required String authorId,
+    required String authorName,
+    required String content,
+    String? imageUrl,
+  }) async {
+    await _postsRef(crewId).add({
+      'crewId': crewId,
+      'authorId': authorId,
+      'authorName': authorName,
+      'content': content,
+      'imageUrl': imageUrl,
+      'likes': [],
+      'commentCount': 0,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // 좋아요 토글 (이미 좋아요 → 취소, 아니면 → 추가)
+  Future<void> toggleLike({
+    required String crewId,
+    required String postId,
+    required String userId,
+  }) async {
+    final postRef = _postsRef(crewId).doc(postId);
+    final doc = await postRef.get();
+    final likes = List<String>.from(doc.data()?['likes'] ?? []);
+
+    if (likes.contains(userId)) {
+      await postRef.update({'likes': FieldValue.arrayRemove([userId])});
+    } else {
+      await postRef.update({'likes': FieldValue.arrayUnion([userId])});
+    }
+  }
+
+  // 게시글 삭제 (작성자 본인 또는 리더만)
+  Future<void> deletePost({
+    required String crewId,
+    required String postId,
+  }) async {
+    await _postsRef(crewId).doc(postId).delete();
   }
 
   // ── 챌린지 서브컬렉션 참조 헬퍼 ──────────────────────────────────────────

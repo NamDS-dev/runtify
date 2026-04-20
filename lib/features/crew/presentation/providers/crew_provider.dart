@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/crew_firestore_datasource.dart';
 import '../../data/repositories/crew_repository_impl.dart';
 import '../../domain/entities/crew_entity.dart';
+import '../../domain/entities/join_request_entity.dart';
 import '../../domain/repositories/crew_repository.dart';
 import '../../domain/usecases/create_crew_usecase.dart';
 import '../../domain/usecases/get_crews_usecase.dart';
@@ -195,5 +196,25 @@ final crewActionsProvider =
     joinCrewUseCase: ref.read(joinCrewUseCaseProvider),
     leaveCrewUseCase: ref.read(leaveCrewUseCaseProvider),
     ref: ref,
+  );
+});
+
+// ── 가입 신청 관련 Provider ───────────────────────────────────────────────
+
+// 대기 중인 가입 신청 목록 (리더용, 실시간)
+final pendingRequestsProvider =
+    StreamProvider.family<List<JoinRequestEntity>, String>((ref, crewId) {
+  final datasource = ref.read(crewDataSourceProvider);
+  return datasource.watchPendingRequests(crewId);
+});
+
+// 특정 유저의 가입 신청 상태 (비멤버용)
+final joinRequestStatusProvider =
+    FutureProvider.family<JoinRequestEntity?, ({String crewId, String userId})>(
+        (ref, params) {
+  final datasource = ref.read(crewDataSourceProvider);
+  return datasource.getJoinRequestStatus(
+    crewId: params.crewId,
+    userId: params.userId,
   );
 });

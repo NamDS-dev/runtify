@@ -1,0 +1,17 @@
+- generic [ref=e5] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button "Back" [ref=e35]
+            - heading "QA테스트크루" [level=2]
+            - button [ref=e36]
+            - tablist:
+              - tab "정보" [ref=e37]
+              - tab "게시글" [active] [selected] [ref=e38]
+              - tab "멤버" [ref=e39]
+          - generic:
+            - generic:
+              - tabpanel "[cloud_firestore/permission-denied] Missing or insufficient permissions."
+          - button [ref=e42]

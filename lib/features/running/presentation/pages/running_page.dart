@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,7 +23,8 @@ class RunningPage extends ConsumerStatefulWidget {
   ConsumerState<RunningPage> createState() => _RunningPageState();
 }
 
-class _RunningPageState extends ConsumerState<RunningPage> {
+class _RunningPageState extends ConsumerState<RunningPage>
+    with WidgetsBindingObserver {
   // 타이머 / 상태
   Timer? _timer;
   bool _isRunning = false;
@@ -92,17 +94,38 @@ class _RunningPageState extends ConsumerState<RunningPage> {
     _lastSplitSeconds = 0;
     setState(() => _isRunning = true);
 
-    // GPS 스트림 (2m 이상 이동 시 업데이트 — 커브 구간 정밀도 향상)
-    const locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 2, // 5m → 2m: 곡선 경로 정밀 추적
-    );
+    // 플랫폼별 Location 설정: 백그라운드 추적을 위해 iOS/Android 분기
+    final LocationSettings locationSettings = Platform.isAndroid
+        ? AndroidSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 2,
+            foregroundNotificationConfig: const ForegroundNotificationConfig(
+              notificationTitle: 'Runtify 러닝 중',
+              notificationText: '러닝 기록이 진행되고 있습니다.',
+              enableWakeLock: true,
+            ),
+          )
+        : Platform.isIOS
+            ? AppleSettings(
+                accuracy: LocationAccuracy.high,
+                distanceFilter: 2,
+                activityType: ActivityType.fitness,
+                pauseLocationUpdatesAutomatically: false,
+                allowBackgroundLocationUpdates: true,
+                showBackgroundLocationIndicator: true,
+              )
+            : const LocationSettings(
+                accuracy: LocationAccuracy.high,
+                distanceFilter: 2,
+              );
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: locationSettings,
     ).listen(
       (Position position) {
-        // GPS 정확도 필터: 오차 20m 초과 시 무시 (건물/나무 아래 신호 약한 구간)
-        if (position.accuracy > 20) return;
+        // GPS 정확도 필터 — 초기 10초는 GPS lock 대기, 완화된 기준 50m 적용
+        // (도심/건물 사이에서 초기 accuracy 25~40m 정상)
+        final elapsedSinceStart = DateTime.now().difference(_startTime).inSeconds;
+        if (elapsedSinceStart > 10 && position.accuracy > 50) return;
 
         // 속도 기반 노이즈 필터: 정지 상태(0.3m/s 미만)에서 거리 누적 방지
         // 0.3m/s ≈ 1.08km/h — 걷기보다 느리면 GPS 떨림으로 판단
@@ -145,9 +168,13 @@ class _RunningPageState extends ConsumerState<RunningPage> {
           _lastPosition = position;
         });
 
-        // 현재 위치로 지도 카메라 이동
-        if (_isRunning) {
-          _mapController.move(point, _mapController.camera.zoom);
+        // 현재 위치로 지도 카메라 이동 — 백그라운드 복귀 시점 등 맵이 detach된 상태면 조용히 스킵
+        if (_isRunning && mounted) {
+          try {
+            _mapController.move(point, _mapController.camera.zoom);
+          } catch (_) {
+            // MapController가 아직 attach되지 않았거나 dispose된 경우 무시
+          }
         }
       },
       onError: (_) {
@@ -155,24 +182,29 @@ class _RunningPageState extends ConsumerState<RunningPage> {
       },
     );
 
-    // 알림 권한 요청 (Android 13+)
-    await _notificationService.requestPermission();
-
-    // 경과 시간 타이머 (1초마다, 화면 꺼짐 후에도 정확한 시간 유지)
+    // 경과 시간 타이머 먼저 등록 — 알림/BLE 권한 요청이 실패/hang해도 타이머는 반드시 동작
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
       setState(() {
         _elapsedSeconds = DateTime.now().difference(_startTime).inSeconds;
       });
-      // 워치에 실시간 데이터 전송
-      _notificationService.update(
-        distanceKm: _distanceKm,
-        elapsedSeconds: _elapsedSeconds,
-        pace: _paceString,
-        heartRate: _currentHr,
-      );
+      // 워치/알림에 실시간 데이터 전송 — 실패해도 타이머는 계속 돌아야 함
+      try {
+        _notificationService.update(
+          distanceKm: _distanceKm,
+          elapsedSeconds: _elapsedSeconds,
+          pace: _paceString,
+          heartRate: _currentHr,
+        );
+      } catch (_) {
+        // 알림 서비스 이슈(권한/플랫폼 미지원)는 무시
+      }
     });
 
-    // BLE 심박수 스캔 시작
+    // 알림 권한 요청 (Android 13+) — fire-and-forget
+    _notificationService.requestPermission().catchError((_) => false);
+
+    // BLE 심박수 스캔 시작 — 실기기에서 권한/지원 이슈로 실패해도 러닝은 계속 진행
     _hrStatusSub = _hrDataSource.statusStream.listen((status) {
       if (mounted) setState(() => _bleStatus = status);
     });
@@ -182,7 +214,11 @@ class _RunningPageState extends ConsumerState<RunningPage> {
         _hrReadings.add(hr);
       }
     });
-    await _hrDataSource.startScan();
+    try {
+      await _hrDataSource.startScan();
+    } catch (_) {
+      // BLE 미지원/권한 거부 — 심박수 없이 러닝 계속 진행
+    }
   }
 
   Future<void> _stopRun() async {
@@ -382,7 +418,24 @@ class _RunningPageState extends ConsumerState<RunningPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 백그라운드/포그라운드 전환 시 위젯 안전 유지.
+    // iOS Scene 기반 앱에서 복귀 시 MapController/stream 접근이 크래시로 이어지지 않도록 처리.
+    if (!_isRunning) return;
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _positionSubscription?.cancel();
     _mapController.dispose();

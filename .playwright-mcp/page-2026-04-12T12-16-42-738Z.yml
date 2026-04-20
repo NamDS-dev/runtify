@@ -1,0 +1,17 @@
+- generic [ref=e5] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button "Back" [ref=e19]
+            - heading "QA테스트크루" [level=2]
+            - button [ref=e20]
+            - tablist:
+              - tab "정보" [ref=e21]
+              - tab "게시글" [active] [selected] [ref=e22]
+              - tab "멤버" [ref=e23]
+          - generic:
+            - generic:
+              - tabpanel "💬 아직 게시글이 없어요 첫 번째 게시글을 작성해보세요!"
+          - button [ref=e26]

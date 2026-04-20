@@ -157,7 +157,19 @@ QA 완료 후 `docs/handoffs/qa_latest.md`를 읽어 결과 확인.
 3. **`design.md` 업데이트** (디자인 작업이 있었다면)
    - `~/.claude/projects/-Users-dave-runtify/memory/design.md`의 프레임 테이블에 신규 프레임 추가
 
-4. **사용자에게 완료 보고**:
+4. **`docs/DEVICE_TEST_QUEUE.md` 업데이트** — 실기기 검증이 필요한 경우만
+
+   아래 조건 중 하나라도 해당되면 반드시 `docs/DEVICE_TEST_QUEUE.md`의 "🔴 대기 중" 섹션에 항목 추가:
+   - GPS/위치/센서/BLE/Health 관련 코드 변경
+   - 네이티브 설정 변경 (Info.plist, AndroidManifest.xml, Xcode Capability, Podfile, build.gradle 등)
+   - 백그라운드/포그라운드 라이프사이클 (`WidgetsBindingObserver`, `AppLifecycleState`) 관련 변경
+   - 시뮬레이터/에뮬레이터에서 재현 불가능한 기능 (푸시 알림, 카메라, 실제 네트워크 품질 등)
+   - iOS 전용 UX (스와이프 제스처, Dynamic Island, Haptic 등) 변경
+   - 시뮬/에뮬에서 검증됐지만 실기기 최종 확인이 권장되는 경우는 `[선택]` 분류로 추가
+
+   파일 상단의 "작성 규칙" 섹션 형식을 따를 것. `[분류]` 태그, 관련 커밋 해시, 관련 핸드오프 파일 경로 필수.
+
+5. **사용자에게 완료 보고**:
 
 ```
 ✅ [Phase X — 기능명] 완료

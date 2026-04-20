@@ -1,39 +1,55 @@
 ---
-feature: 워치 동기화 홈 카드 + BLE 심박수 온보딩
+feature: 크루 이벤트 (그룹 러닝 모집)
 status: done
-date: 2026-04-10
+date: 2026-04-12
 ---
 
 ## Figma 프레임
 | 화면 | ID | x | y |
 |------|-----|---|---|
-| 2-SUB. Home (Watch Sync) | 281:149 | 1060 | 924 |
-| OB-4. BLE 심박수 연결 | 281:159 | 9690 | 924 |
+| 5-SUB. Crew Event List | 288:68 | 5760 | 924 |
+| 5-SUB. Crew Event Create | 288:69 | 5760 | 1848 |
 
-## 1. 워치 동기화 홈 카드 (281:149)
-- 위치: 홈 대시보드에 삽입 (리워드 포인트 배너 아래 또는 위)
-- 카드: #252525, cornerRadius 16, 358×168
-- 헤더: "⌚ 워치 동기화" #FFFFFF 15px Bold + "N건 새 기록" #FF4D00 12px SemiBold
-- 기록 행: "🏃 4.2km · 24:30 · 148bpm" #9E9E9E 13px + 날짜 #666666 11px
-- 버튼: "전체 기록 가져오기 →" #FF4D00/10% bg, cornerRadius 10
-- 표시 조건: Health Connect 권한 허용 + 동기화된 워치 기록이 있을 때만
-- "전체 기록 가져오기" 탭 → HealthConnectDataSource.getRecentSessions() 호출 → Firestore에 저장
+## 이벤트 목록 (288:68)
+- 앱바: "← 크루 이벤트"
+- 다가오는 이벤트 섹션: #FFFFFF 16px Bold
+  - 이벤트 카드: #252525, cornerRadius 16, 358×160
+    - 날짜/시간: #FF4D00 12px SemiBold
+    - 제목: "🏃 토요 한강 러닝" #FFFFFF 18px Bold
+    - 장소: "📍 반포한강공원 · 5km 코스" #9E9E9E 13px
+    - 참가자: "👥 8 / 15명 참가" #808080 12px
+    - 참가하기 버튼: #FF4D00, cornerRadius 8, 326×40
+- 지난 이벤트 섹션: #9E9E9E 16px Bold
+  - 카드: #1A1A1A, cornerRadius 16, 회색 텍스트
+- 이벤트 만들기 FAB: #FF4D00, 56×56, 📅, 리더에게만
 
-## 2. BLE 심박수 연결 (281:159)
-- 진입: Health Connect 온보딩 완료 후 또는 프로필 설정에서
-- 제목: "❤️ 실시간 심박수 연결" #FFFFFF 22px Bold
-- 설명: "갤럭시 워치의 심박수를 러닝 중 실시간으로 표시합니다"
-- 스캔 상태: "주변 기기 검색 중..." #FF4D00 13px SemiBold
-- 기기 카드: #252525 cornerRadius 14, 350×64
-  - 기기명: "⌚ Galaxy Watch6" #FFFFFF 15px Bold
-  - 신호: "신호 강함 · Heart Rate Service" #808080 11px
-  - 연결 버튼: "연결" #FF4D00 14px Bold
-- 약한 신호 기기: #1A1A1A bg, 회색 텍스트
-- 힌트: "💡 워치의 삼성 헬스 앱이 실행 중이어야..." #666666 12px
-- 나중에 하기: #666666 13px Center
+## 이벤트 생성 BottomSheet (288:69)
+- 딤: #000000 50%
+- BottomSheet: #1A1A1A, cornerRadius 24
+- 핸들바: 48×4, grey.600
+- 제목: "📅 이벤트 만들기" #FFFFFF 18px Bold
+- 필드 3개 (모두 #252525, cornerRadius 12):
+  - 이벤트 제목: TextField (최대 30자)
+  - 날짜: showDatePicker (캘린더), 시간: CupertinoPicker (휠 피커)
+  - 장소: TextField
+- 이벤트 만들기 버튼: #FF4D00, cornerRadius 14, 350×52
+
+## Firestore 구조
+```
+crews/{crewId}/events/{eventId}
+  title: string
+  date: timestamp
+  locationName: string
+  participantIds: [userId, ...]
+  createdBy: userId
+  createdAt: timestamp
+  status: "upcoming" | "completed"
+```
 
 ## 코딩 에이전트 참고사항
-- 워치 카드: home_page.dart에 조건부 표시 (Health Connect 권한 + 데이터 존재)
-- BLE 온보딩: heart_rate_ble_datasource.dart의 scanForDevices() 재사용
-- 라우트: /onboarding/ble 추가
-- 연결 성공 시 SharedPreferences에 저장, 러닝 시 자동 재연결
+- 크루 상세 정보 탭에 "이벤트" 섹션 추가 또는 별도 라우트 /crew/events
+- 진입: 정보 탭의 위클리 챌린지 카드 아래 또는 AppBar 아이콘
+- 참가하기: participantIds에 userId toggle (arrayUnion/arrayRemove)
+- 날짜 선택: showDatePicker + showTimePicker (Flutter 기본)
+- 지난 이벤트: date < now → status=completed, 회색 처리
+- 이벤트 생성 시 content_validator.dart로 제목/장소 검증

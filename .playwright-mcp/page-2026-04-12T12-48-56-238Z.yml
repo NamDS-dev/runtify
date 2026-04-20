@@ -1,0 +1,17 @@
+- generic [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button [active] [ref=e80]
+            - heading "멤버 관리" [level=2]
+          - group:
+            - generic:
+              - generic: 현재 멤버 (1명)
+            - generic:
+              - generic: "1"
+            - generic:
+              - generic: QA테스터
+            - generic:
+              - generic: 0P

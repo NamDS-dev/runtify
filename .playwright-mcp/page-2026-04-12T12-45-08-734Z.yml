@@ -1,0 +1,14 @@
+- generic [active] [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic: RUNTIFY
+            - generic:
+              - generic: 달리는 만큼 성장하는 게임
+            - textbox "이메일" [ref=e27]
+            - textbox "비밀번호" [ref=e29]
+            - button "로그인" [ref=e30]
+            - button "계정이 없으신가요? 회원가입" [ref=e31]

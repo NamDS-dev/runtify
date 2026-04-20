@@ -1,0 +1,25 @@
+- generic [ref=e5]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button [active] [ref=e37]
+            - heading "멤버 관리" [level=2]
+          - group:
+            - generic:
+              - generic: 가입 대기 (1명)
+            - generic:
+              - generic: 테스터2
+            - generic:
+              - generic: 13분 전 신청
+            - button "승인" [ref=e38]
+            - button "거절" [ref=e39]
+            - generic:
+              - generic: 현재 멤버 (1명)
+            - generic:
+              - generic: "1"
+            - generic:
+              - generic: QA테스터
+            - generic:
+              - generic: 0P

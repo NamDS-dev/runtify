@@ -1,0 +1,78 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)",
+      "Bash(flutter doctor:*)",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_console_messages",
+      "mcp__claude-talk-to-figma__get_node_info",
+      "mcp__claude-talk-to-figma__get_nodes_info",
+      "mcp__claude-talk-to-figma__get_document_info",
+      "mcp__claude-talk-to-figma__export_node_as_image"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ~/)",
+      "Bash(rm -rf ~/*)",
+      "Bash(rm -rf $HOME*)",
+      "Bash(sudo *)",
+      "Bash(sudo)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git push -f)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -fd*)",
+      "Bash(git clean -fx*)",
+      "Bash(git clean -f *)",
+      "Bash(git branch -D *)",
+      "Bash(git checkout --orphan*)",
+      "Bash(firebase firestore:delete*)",
+      "Bash(firebase projects:delete*)",
+      "Bash(firebase database:remove*)",
+      "Bash(xcrun simctl erase*)",
+      "Bash(mkfs*)",
+      "Bash(dd if=*)",
+      "Bash(diskutil erase*)",
+      "Bash(diskutil eraseDisk*)",
+      "Bash(shutdown*)",
+      "Bash(reboot*)",
+      "Bash(halt*)",
+      "Bash(chmod -R 000*)",
+      "Bash(chmod 000 *)",
+      "Bash(chown -R *)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "osascript -e 'display notification \"자동개발 세션이 종료됐거나 입력을 기다리고 있어요\" with title \"Runtify PM\" sound name \"Glass\"'"
+          },
+          {
+            "type": "command",
+            "async": true,
+            "command": "/Users/dave/runtify/.claude/hooks/analyze-on-stop.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "osascript -e 'display notification \"PM이 확인을 요청했어요\" with title \"Runtify PM\" sound name \"Ping\"'"
+          }
+        ]
+      }
+    ]
+  }
+}

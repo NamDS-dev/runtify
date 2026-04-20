@@ -16,7 +16,7 @@ service cloud.firestore {
     // ── 유저 ──────────────────────────────────────
     match /users/{userId} {
       allow read: if isAuth();
-      allow write: if isOwner(userId);
+      allow write: if isAuth();  // 크루 가입 승인 시 리더가 crewId 변경 필요
 
       // 배지 서브컬렉션
       match /badges/{badgeId} {
@@ -49,6 +49,30 @@ service cloud.firestore {
       match /challenges/{challengeId} {
         allow read: if isAuth();
         allow write: if isAuth();
+      }
+
+      // 가입 신청 서브컬렉션
+      match /joinRequests/{requestId} {
+        allow read: if isAuth();
+        allow create: if isAuth();
+        allow update: if isAuth();
+        allow delete: if isAuth();
+      }
+
+      // 이벤트 서브컬렉션
+      match /events/{eventId} {
+        allow read: if isAuth();
+        allow create: if isAuth();
+        allow update: if isAuth();
+        allow delete: if isAuth();
+      }
+
+      // 게시글 서브컬렉션
+      match /posts/{postId} {
+        allow read: if isAuth();
+        allow create: if isAuth();
+        allow update: if isAuth();
+        allow delete: if isAuth();
       }
     }
 

@@ -1,4 +1,6 @@
+import 'dart:io' show Platform;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/config/app_env.dart';
@@ -55,13 +57,18 @@ class RuntifyApp extends ConsumerWidget {
       themeMode: themeMode,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: AppEnv.isDev, // 개발 빌드에서만 DEBUG 배너 표시
-      // 모바일 앱 레이아웃 제한 — 데스크톱/웹에서도 모바일 크기로 중앙 정렬
+      // 데스크톱/웹에서만 모바일 크기로 중앙 정렬 — 실제 iOS/Android 기기에서는 네이티브 너비 사용
       builder: (context, child) {
+        final isDesktopOrWeb = kIsWeb ||
+            (!Platform.isIOS && !Platform.isAndroid);
+        if (!isDesktopOrWeb) {
+          return child ?? const SizedBox.shrink();
+        }
         return ColoredBox(
           color: Colors.black,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
+              constraints: const BoxConstraints(maxWidth: 390),
               child: child,
             ),
           ),
