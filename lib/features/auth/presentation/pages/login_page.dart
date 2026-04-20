@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/validators/email_validator.dart';
+import '../../../../core/validators/password_validator.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/password_strength_bar.dart';
 
 // 로그인 화면
 class LoginPage extends ConsumerStatefulWidget {
@@ -21,9 +23,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   bool _isSignUpMode = false; // true면 회원가입 모드
   bool _isLoading = false;
+  String _password = ''; // 실시간 강도 표시용
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_onPasswordChanged);
+  }
+
+  void _onPasswordChanged() {
+    // 회원가입 모드에서만 실시간 강도 표시 → 불필요한 rebuild 최소화
+    if (!_isSignUpMode) return;
+    if (_password == _passwordController.text) return;
+    setState(() => _password = _passwordController.text);
+  }
 
   @override
   void dispose() {
+    _passwordController.removeListener(_onPasswordChanged);
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
@@ -133,9 +150,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   label: '비밀번호',
                   icon: Icons.lock_outline,
                   obscureText: true,
-                  validator: (v) =>
-                      v!.length < 6 ? '비밀번호는 6자 이상이어야 합니다' : null,
+                  validator: _isSignUpMode
+                      ? PasswordValidator.validateForSignUp
+                      : PasswordValidator.validateForSignIn,
                 ),
+                if (_isSignUpMode)
+                  PasswordStrengthBar(password: _password),
                 const SizedBox(height: 32),
 
                 // 로그인/회원가입 버튼
