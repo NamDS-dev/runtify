@@ -19,26 +19,20 @@
   - 검증: `flutter analyze` 0 issues + `flutter test` pass
   - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`
 
-- [ ] **[인증] 이메일 형식 검증 및 정규화 (2026-04-20 발견)**
-  - 현재: 이메일 validator가 `isEmpty`만 체크, RFC 5322 정규식 없음. `.trim()`은 `signInWithEmail`에서만 처리, 회원가입은 누락
-  - 개선: 클라이언트 validator에 이메일 정규식 + 모든 이메일 입력에 `.toLowerCase().trim()` 일관 적용. `lib/core/validators/email_validator.dart` 신설
-  - 근거: 대소문자 차이로 로그인 실패 방지 + 동일 이메일 중복 가입 방지
-  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/core/validators/email_validator.dart` (신규)
-  - 예상: 45분
+- [x] ✅ **[인증] 이메일 형식 검증 및 정규화 (2026-04-20 구현 완료)**
+  - 구현: `lib/core/validators/email_validator.dart` 신설 (RFC 5322 기반 정규식 + 길이 제한 + `.toLowerCase().trim()` 정규화). 로그인/회원가입 폼 validator 교체, 데이터소스에서도 방어적 정규화 + Firebase Auth/Firestore 저장 값까지 일관 정규화
+  - 검증: `flutter analyze` 0 issues + 단위 테스트 6건 pass
+  - 파일: `lib/core/validators/email_validator.dart`, `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `test/core/validators/email_validator_test.dart`
 
-- [ ] **[인증] 로그아웃 후 민감 데이터 클리어 보강 (2026-04-20 발견)**
-  - 현재: `signOut`에서 `GoogleSignIn().signOut()` + `FirebaseAuth.signOut()` 호출. SharedPreferences/로컬 캐시 클리어 여부 불명확
-  - 개선: `SharedPreferences`의 사용자 관련 키 삭제 + 메모리 캐시 플러시 + 로그인 페이지 리다이렉트 시 history 클리어
-  - 근거: 공유 기기에서 이전 사용자 정보 노출 방지 + 메모리 누수 방지
-  - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`
-  - 예상: 60분
+- [x] ✅ **[인증] 로그아웃 후 민감 데이터 클리어 보강 (2026-04-20 구현 완료)**
+  - 구현: `signOut`에서 BLE 페어링 키(`ble_device_id`, `ble_device_name`, `ble_onboarding_done`)와 Health Connect 온보딩 키 삭제. 테마 선호도(`runtify_theme_mode`)는 기기 설정이라 유지. Google/Firebase/SharedPreferences 3단계를 try-catch로 격리해 부분 실패 시에도 다음 cleanup 진행
+  - 검증: `flutter analyze` 0 issues + 기존 테스트 pass
+  - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`
 
-- [ ] **[인증] 비밀번호 복잡도 규칙 적용 (2026-04-20 발견)**
-  - 현재: `login_page.dart`에서 `length < 6`만 체크
-  - 개선: 대문자+소문자+숫자+특수문자 조합 요구 + 타이핑 중 실시간 피드백 위젯(PasswordStrengthWidget) + 흔한 비밀번호 차단 목록(`password`, `123456` 등)
-  - 근거: OWASP 표준 — brute-force/dictionary attack 방어
-  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/core/validators/password_validator.dart` (신규)
-  - 예상: 90분
+- [x] ✅ **[인증] 비밀번호 복잡도 규칙 적용 (2026-04-20 구현 완료)**
+  - 구현: `lib/core/validators/password_validator.dart` 신설 — `validateForSignUp`(8자+ / 대·소·숫자 / 흔한 비번 16종 차단) + `validateForSignIn`(기존 사용자 호환, 6자+). `PasswordStrengthBar` 위젯으로 가입 모드에서 4단 실시간 강도 표시
+  - 검증: `flutter analyze` 0 issues + 단위 테스트 11건 pass
+  - 파일: `lib/core/validators/password_validator.dart`, `lib/features/auth/presentation/widgets/password_strength_bar.dart`, `lib/features/auth/presentation/pages/login_page.dart`, `test/core/validators/password_validator_test.dart`
 
 ### 🟡 기획 확정 대기 (사용자 검토 후 구현)
 
