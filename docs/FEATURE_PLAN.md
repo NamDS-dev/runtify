@@ -6,6 +6,86 @@
 
 ---
 
+## 🤖 야간 PM 발견 갭
+
+> `/pm-night` 실행 시 자동 갱신되는 섹션
+> PM이 기획 오딧(코드/UX ↔ 모범사례 비교)으로 누락된 항목 기록
+> 🟢 = 야간 자동 구현 대상 / 🟡 = 사용자 검토 필요 / 🔴 = 정책·보안 결정 필요
+
+### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
+
+- [x] ✅ **[인증] Firebase 에러 코드 → 사용자 친화적 메시지 맵핑 확장 (2026-04-20 구현 완료)**
+  - 구현: `_convertAuthException` 확장 — `user-not-found`/`wrong-password`/`invalid-credential`을 통일 메시지로 처리(계정 존재 힌트 차단), `network-request-failed`/`user-disabled`/`requires-recent-login`/`operation-not-allowed`/`account-exists-with-different-credential`/`credential-already-in-use`/`expired-action-code`/`invalid-action-code`/`user-token-expired` 추가, default 메시지에서 원본 `e.message` 노출 제거
+  - 검증: `flutter analyze` 0 issues + `flutter test` pass
+  - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`
+
+- [ ] **[인증] 이메일 형식 검증 및 정규화 (2026-04-20 발견)**
+  - 현재: 이메일 validator가 `isEmpty`만 체크, RFC 5322 정규식 없음. `.trim()`은 `signInWithEmail`에서만 처리, 회원가입은 누락
+  - 개선: 클라이언트 validator에 이메일 정규식 + 모든 이메일 입력에 `.toLowerCase().trim()` 일관 적용. `lib/core/validators/email_validator.dart` 신설
+  - 근거: 대소문자 차이로 로그인 실패 방지 + 동일 이메일 중복 가입 방지
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/core/validators/email_validator.dart` (신규)
+  - 예상: 45분
+
+- [ ] **[인증] 로그아웃 후 민감 데이터 클리어 보강 (2026-04-20 발견)**
+  - 현재: `signOut`에서 `GoogleSignIn().signOut()` + `FirebaseAuth.signOut()` 호출. SharedPreferences/로컬 캐시 클리어 여부 불명확
+  - 개선: `SharedPreferences`의 사용자 관련 키 삭제 + 메모리 캐시 플러시 + 로그인 페이지 리다이렉트 시 history 클리어
+  - 근거: 공유 기기에서 이전 사용자 정보 노출 방지 + 메모리 누수 방지
+  - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`
+  - 예상: 60분
+
+- [ ] **[인증] 비밀번호 복잡도 규칙 적용 (2026-04-20 발견)**
+  - 현재: `login_page.dart`에서 `length < 6`만 체크
+  - 개선: 대문자+소문자+숫자+특수문자 조합 요구 + 타이핑 중 실시간 피드백 위젯(PasswordStrengthWidget) + 흔한 비밀번호 차단 목록(`password`, `123456` 등)
+  - 근거: OWASP 표준 — brute-force/dictionary attack 방어
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/core/validators/password_validator.dart` (신규)
+  - 예상: 90분
+
+### 🟡 기획 확정 대기 (사용자 검토 후 구현)
+
+- [ ] **[인증] 비밀번호 재설정 기능 (2026-04-20 발견)**
+  - 현재: 로그인 페이지에 "비밀번호 찾기" 버튼 없음. Firebase `sendPasswordResetEmail` 미사용
+  - 개선: 로그인 페이지 하단에 "비밀번호 찾기" 버튼 → 이메일 입력 모달 → `sendPasswordResetEmail` 호출 → 성공 메시지
+  - 검토 필요: 재설정 이메일 템플릿을 Firebase 기본으로 갈지 커스텀으로 갈지 (브랜드)
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/domain/usecases/forgot_password_usecase.dart` (신규)
+  - 예상: 75분
+
+- [ ] **[인증] 이메일 인증 (Verification) 플로우 (2026-04-20 발견)**
+  - 현재: `signUpWithEmail`에서 계정 생성 후 인증 이메일 자동 발송 없음. 미검증 계정도 전체 기능 접근 가능
+  - 개선: `sendEmailVerification()` 호출 + `emailVerified` 필드를 UserEntity에 추가 + 미인증 상태 UI 배너 + 인증 전 특정 기능(크루 가입, 리워드) 제한
+  - 검토 필요: 어느 기능까지 인증 없이 허용할지(온보딩 UX vs 정책 강도)
+  - 파일: `auth_firebase_datasource.dart`, `user_entity.dart`, `user_model.dart`, `login_page.dart`
+  - 예상: 120분
+
+- [ ] **[인증] 연속 로그인 실패 레이트 리밋 (2026-04-20 발견)**
+  - 현재: 실패 에러만 반환. 3회 이상 실패 시 계정 잠금/대기 없음 (Firebase 측 기본 rate limit만)
+  - 개선: 로컬 `SharedPreferences`로 실패 횟수 추적 → 3회 실패 시 60초 대기 강제 + UI 카운트다운
+  - 검토 필요: 서버 측(Firebase 규칙/함수) 강화도 추가할지 — Blaze 요금제 전환 검토
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`
+  - 예상: 85분
+
+- [ ] **[인증] 세션 만료 및 토큰 갱신 처리 (2026-04-20 발견)**
+  - 현재: Firebase ID token 만료(1시간)에 대한 명시적 처리 없음. 갱신 자동화/UI 피드백 미구현
+  - 개선: `FirebaseAuth.instance.idTokenChanges()` 스트림 모니터링 → 갱신 실패 시 로그인 리다이렉트. 선택: 30분 유휴 시 강제 재인증
+  - 검토 필요: 유휴 시간 정책 정하기 + 기존 러닝 중에 토큰 만료 시 UX 시나리오
+  - 파일: `auth_provider.dart`, `lib/core/services/session_manager.dart` (신규)
+  - 예상: 95분
+
+### 🔴 사용자 결정 필요 (보안·정책 critical)
+
+- [ ] **[인증] 계정 탈퇴(Account Deletion) 플로우 (2026-04-20 발견)**
+  - 현재: 프로필 페이지에 로그아웃만 있음. 계정 삭제 기능 전무
+  - 개선: "계정 삭제" 버튼 → 확인 다이얼로그 → **비밀번호 재인증** → Firestore 사용자 데이터 삭제 + `FirebaseAuth.currentUser.delete()` + 관련 컬렉션(크루 멤버십, 러닝 세션 등) 처리
+  - 사용자 결정 사항:
+    - 연관 데이터 처리 방식: **완전 삭제 vs 익명화 vs 소프트 삭제**
+    - 크루 리더가 탈퇴 시: 리더 위임 vs 크루 해체 vs 탈퇴 제한
+    - 유예기간: 즉시 삭제 vs 30일 복구 가능
+    - GDPR/CCPA 컴플라이언스 문구 포함 여부
+  - **중요**: App Store 14+ 정책상 필수. 미구현 시 심사 거절 가능성
+  - 파일: `profile_page.dart`, `auth_firebase_datasource.dart`, `delete_account_usecase.dart` (신규)
+  - 예상: 110분 + 사용자 정책 결정 시간
+
+---
+
 ## 현재 상태 (구현 완료)
 
 | 기능 | 상태 | 비고 |

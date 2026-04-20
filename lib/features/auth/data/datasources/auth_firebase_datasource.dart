@@ -207,23 +207,58 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
   }
 
   // FirebaseAuthException → 한국어 에러 메시지 변환
+  // 보안 원칙:
+  // - 로그인 실패 시 계정 존재 여부 힌트 차단 (user-not-found/wrong-password 메시지 통일)
+  // - 네트워크 에러와 인증 에러를 구분해 재시도 가능 여부를 사용자에게 안내
   Exception _convertAuthException(FirebaseAuthException e) {
     switch (e.code) {
+      // ── 로그인 실패 (존재 여부 힌트 제거 통합) ─────────────────────────────
       case 'user-not-found':
-        return Exception('등록되지 않은 이메일입니다');
       case 'wrong-password':
       case 'invalid-credential':
+      case 'invalid-login-credentials':
         return Exception('이메일 또는 비밀번호가 올바르지 않습니다');
+
+      // ── 회원가입 관련 ─────────────────────────────────────────────────────
       case 'email-already-in-use':
         return Exception('이미 사용 중인 이메일입니다');
       case 'weak-password':
         return Exception('비밀번호는 6자 이상이어야 합니다');
       case 'invalid-email':
         return Exception('올바른 이메일 형식이 아닙니다');
+
+      // ── 계정 상태 ─────────────────────────────────────────────────────────
+      case 'user-disabled':
+        return Exception('비활성화된 계정입니다. 고객센터로 문의해주세요');
+      case 'user-token-expired':
+      case 'requires-recent-login':
+        return Exception('세션이 만료되었습니다. 다시 로그인해주세요');
+
+      // ── 레이트 리밋 / 일시 차단 ───────────────────────────────────────────
       case 'too-many-requests':
-        return Exception('잠시 후 다시 시도해주세요');
+        return Exception('로그인 시도가 많습니다. 잠시 후 다시 시도해주세요');
+
+      // ── 네트워크 에러 (재시도 가능) ───────────────────────────────────────
+      case 'network-request-failed':
+        return Exception('네트워크 연결을 확인한 뒤 다시 시도해주세요');
+
+      // ── 인증 방식/제공자 문제 ─────────────────────────────────────────────
+      case 'operation-not-allowed':
+        return Exception('현재 이 로그인 방식을 사용할 수 없습니다');
+      case 'account-exists-with-different-credential':
+        return Exception('다른 로그인 방식으로 가입된 이메일입니다');
+      case 'credential-already-in-use':
+        return Exception('이미 다른 계정에 연결된 인증 정보입니다');
+
+      // ── 비밀번호 재설정 / 이메일 인증 액션 코드 ──────────────────────────
+      case 'expired-action-code':
+        return Exception('링크가 만료되었습니다. 다시 요청해주세요');
+      case 'invalid-action-code':
+        return Exception('유효하지 않은 링크입니다');
+
+      // ── 기타 / 알 수 없는 에러 ────────────────────────────────────────────
       default:
-        return Exception('오류가 발생했습니다: ${e.message}');
+        return Exception('오류가 발생했습니다. 잠시 후 다시 시도해주세요');
     }
   }
 }
