@@ -181,12 +181,40 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         : '계정이 없으신가요? 회원가입',
                   ),
                 ),
+
+                // 비밀번호 찾기 (로그인 모드에서만 노출)
+                if (!_isSignUpMode)
+                  TextButton(
+                    onPressed: _isLoading ? null : _openForgotPasswordSheet,
+                    child: Text(
+                      '비밀번호를 잊으셨나요?',
+                      style: TextStyle(
+                        color: context.colors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
         ),
       ),
     ),
+    );
+  }
+
+  // 비밀번호 찾기 BottomSheet — 로그인 모드에서 "비밀번호를 잊으셨나요?" 탭 시 열림
+  // 보안: user-not-found 와 성공을 구분하지 않고 동일 안내 문구로 통일
+  void _openForgotPasswordSheet() {
+    final seededEmail = EmailValidator.normalize(_emailController.text);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) => _ForgotPasswordSheet(initialEmail: seededEmail),
     );
   }
 
@@ -218,6 +246,150 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ),
         filled: true,
         fillColor: context.colors.surface,
+      ),
+    );
+  }
+}
+
+// ── 비밀번호 재설정 BottomSheet ──────────────────────────────────────────────
+// 사용자가 이메일을 입력하면 Firebase 기본 템플릿(한국어) 재설정 메일 발송.
+// 보안 원칙:
+// - 등록 여부와 무관하게 동일 안내 문구("해당 이메일이 등록되어 있다면 재설정 메일이 발송됩니다")
+// - 네트워크/형식 오류만 별도 에러 SnackBar 로 사용자에게 재시도 유도
+class _ForgotPasswordSheet extends ConsumerStatefulWidget {
+  final String initialEmail;
+
+  const _ForgotPasswordSheet({required this.initialEmail});
+
+  @override
+  ConsumerState<_ForgotPasswordSheet> createState() =>
+      _ForgotPasswordSheetState();
+}
+
+class _ForgotPasswordSheetState extends ConsumerState<_ForgotPasswordSheet> {
+  late final TextEditingController _emailController;
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final errorMessage = await ref
+        .read(authProvider.notifier)
+        .sendPasswordReset(_emailController.text);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    // 네트워크·형식 에러만 빨간 SnackBar 로 안내.
+    // 계정 존재 여부는 노출하지 않고 항상 "발송됨" 메시지로 통일.
+    if (errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('해당 이메일이 등록되어 있다면 재설정 메일이 발송됩니다'),
+        backgroundColor: Color(0xFF3A3A3A),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 키보드에 덮이지 않도록 viewInsets 반영
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: 24 + bottomInset,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '비밀번호 재설정',
+              style: TextStyle(
+                color: context.colors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '가입한 이메일을 입력하면 재설정 링크를 보내드려요.',
+              style: TextStyle(
+                color: context.colors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _emailController,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              validator: EmailValidator.validate,
+              enabled: !_isLoading,
+              style: TextStyle(color: context.colors.textPrimary),
+              decoration: InputDecoration(
+                labelText: '이메일',
+                labelStyle: TextStyle(color: context.colors.textSecondary),
+                prefixIcon: const Icon(
+                  Icons.email_outlined,
+                  color: AppTheme.primary,
+                ),
+                filled: true,
+                fillColor: context.colors.cardColor,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.colors.surface),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderSide: BorderSide(color: AppTheme.primary),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _submit,
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('재설정 메일 발송'),
+            ),
+          ],
+        ),
       ),
     );
   }

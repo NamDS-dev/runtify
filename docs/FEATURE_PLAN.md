@@ -61,25 +61,12 @@
   - 검증: `flutter analyze` 0 issues + 단위 테스트 11건 pass
   - 파일: `lib/core/validators/password_validator.dart`, `lib/features/auth/presentation/widgets/password_strength_bar.dart`, `lib/features/auth/presentation/pages/login_page.dart`, `test/core/validators/password_validator_test.dart`
 
-- [ ] **[인증] 비밀번호 재설정 기능 — 하이브리드 템플릿 (2026-04-21 기획 확정)**
-  - 결정: **Firebase 기본 발송 + Console 템플릿만 한국어·브랜드명 커스텀** (자체 도메인·SendGrid는 MVP 이후로 연기)
-  - Firebase Console 작업 (사용자가 직접): Authentication → Templates → Password reset
-    - 언어: **한국어**
-    - Sender name: `Runtify`
-    - Subject: `[Runtify] 비밀번호 재설정 안내`
-    - From: `noreply@<project>.firebaseapp.com` (기본 유지)
-  - Flutter 구현 체크리스트:
-    - [ ] `auth_remote_datasource.dart` 인터페이스에 `sendPasswordResetEmail(String email)` 추가
-    - [ ] `auth_firebase_datasource.dart`에서 `FirebaseAuth.sendPasswordResetEmail(email: normalized)` 호출 + 기존 `_convertAuthException` 재사용
-    - [ ] `AuthRepository`/`AuthRepositoryImpl`에 `Either<Failure, void> sendPasswordReset(...)` 추가
-    - [ ] `ForgotPasswordUseCase` 신설 (`lib/features/auth/domain/usecases/forgot_password_usecase.dart`)
-    - [ ] `auth_provider.dart`에 `sendPasswordReset(email)` 메서드 추가
-    - [ ] `login_page.dart`: 로그인 모드 하단에 "비밀번호 찾기" TextButton → `showModalBottomSheet`로 이메일 입력 폼 → 제출 시 로딩/성공/에러 SnackBar
-    - [ ] 이메일은 기존 `EmailValidator.validate` + `.normalize`로 검증·정규화
-    - [ ] 단위 테스트: `ForgotPasswordUseCase` 정상/실패 2건, datasource에서 `invalid-email`/`user-not-found` 예외 매핑 유지 확인
-  - 보안 노트: `user-not-found` 에러를 그대로 노출하지 말고 **"해당 이메일이 등록되어 있다면 재설정 메일이 발송됩니다"** 형태로 통일 응답 (이미 `_convertAuthException`에서 계정 존재 힌트 차단됨 — UseCase 레벨에서 성공/실패를 구분하지 않고 동일 안내 메시지 표시)
-  - 파일: `lib/features/auth/data/datasources/auth_remote_datasource.dart`, `auth_firebase_datasource.dart`, `auth_repository_impl.dart`, `domain/repositories/auth_repository.dart`, `domain/usecases/forgot_password_usecase.dart` (신규), `presentation/providers/auth_provider.dart`, `presentation/pages/login_page.dart`, `test/features/auth/forgot_password_usecase_test.dart` (신규)
-  - 예상: 75분 (Flutter 구현) + 10분 (Firebase Console 설정)
+- [x] ✅ **[인증] 비밀번호 재설정 기능 — Flutter 구현 완료 (2026-04-22 구현 완료)**
+  - 구현: 클린 아키텍처 따라 `AuthRemoteDataSource.sendPasswordResetEmail` → `AuthRepository.sendPasswordReset` → `ForgotPasswordUseCase` → `AuthNotifier.sendPasswordReset` → `login_page.dart` 하단 "비밀번호를 잊으셨나요?" 버튼 → `_ForgotPasswordSheet` BottomSheet (이메일 입력 + 로딩 + 성공/에러 SnackBar)
+  - 보안: UseCase 레벨에서 네트워크/형식 에러만 Left, 계정 존재 여부와 무관하게 "해당 이메일이 등록되어 있다면 재설정 메일이 발송됩니다" 통일 응답. `_convertAuthException`은 기존 매핑 재사용
+  - 검증: `flutter analyze` 0 issues + `flutter test` 22건 pass (신규 4건: 정상/형식 오류/빈 입력/Repository 실패)
+  - 파일: `lib/features/auth/data/datasources/auth_remote_datasource.dart`, `auth_firebase_datasource.dart`, `auth_mock_datasource.dart`, `data/repositories/auth_repository_impl.dart`, `domain/repositories/auth_repository.dart`, `domain/usecases/forgot_password_usecase.dart` (신규), `presentation/providers/auth_provider.dart`, `presentation/pages/login_page.dart`, `test/features/auth/forgot_password_usecase_test.dart` (신규)
+  - **⚠️ 남은 작업 (사용자 직접 수행 필요)**: Firebase Console → Authentication → Templates → Password reset → 언어 한국어, Sender `Runtify`, Subject `[Runtify] 비밀번호 재설정 안내` 설정
 
 ### 🟡 기획 확정 대기 (사용자 검토 후 구현)
 

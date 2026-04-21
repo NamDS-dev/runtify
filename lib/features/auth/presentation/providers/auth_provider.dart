@@ -7,6 +7,7 @@ import '../../data/datasources/auth_firebase_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user_entity.dart';
+import '../../domain/usecases/forgot_password_usecase.dart';
 import '../../domain/usecases/sign_in_usecase.dart';
 import '../../domain/usecases/sign_up_usecase.dart';
 
@@ -37,19 +38,26 @@ final signUpUseCaseProvider = Provider((ref) {
   return SignUpUseCase(ref.read(authRepositoryProvider));
 });
 
+final forgotPasswordUseCaseProvider = Provider((ref) {
+  return ForgotPasswordUseCase(ref.read(authRepositoryProvider));
+});
+
 // 현재 로그인된 유저 상태
 class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
   final AuthRemoteDataSource _dataSource;
   final SignInUseCase _signInUseCase;
   final SignUpUseCase _signUpUseCase;
+  final ForgotPasswordUseCase _forgotPasswordUseCase;
 
   AuthNotifier({
     required AuthRemoteDataSource dataSource,
     required SignInUseCase signInUseCase,
     required SignUpUseCase signUpUseCase,
+    required ForgotPasswordUseCase forgotPasswordUseCase,
   })  : _dataSource = dataSource,
         _signInUseCase = signInUseCase,
         _signUpUseCase = signUpUseCase,
+        _forgotPasswordUseCase = forgotPasswordUseCase,
         super(const AsyncValue.loading()) {
     _checkCurrentUser();
   }
@@ -135,6 +143,15 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     await _dataSource.signOut();
     state = const AsyncValue.data(null);
   }
+
+  // 비밀번호 재설정 메일 발송
+  // 반환: null = 성공(또는 계정 존재 힌트 차단용 의사-성공), String = 입력/네트워크 에러 메시지
+  Future<String?> sendPasswordReset(String email) async {
+    final result = await _forgotPasswordUseCase(
+      ForgotPasswordParams(email: email),
+    );
+    return result.fold((failure) => failure.message, (_) => null);
+  }
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<UserEntity?>>(
@@ -142,6 +159,7 @@ final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<UserEntity?>
     dataSource: ref.read(authRemoteDataSourceProvider),
     signInUseCase: ref.read(signInUseCaseProvider),
     signUpUseCase: ref.read(signUpUseCaseProvider),
+    forgotPasswordUseCase: ref.read(forgotPasswordUseCaseProvider),
   ),
 );
 

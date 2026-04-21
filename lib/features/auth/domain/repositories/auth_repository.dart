@@ -23,4 +23,8 @@ abstract class AuthRepository {
 
   // 현재 로그인된 유저 가져오기
   Future<Either<Failure, UserEntity?>> getCurrentUser();
+
+  // 비밀번호 재설정 메일 발송
+  // 보안: user-not-found 를 성공과 구분하지 않아 계정 존재 힌트를 차단한다.
+  Future<Either<Failure, void>> sendPasswordReset({required String email});
 }

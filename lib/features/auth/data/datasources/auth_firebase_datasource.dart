@@ -192,6 +192,17 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
   }
 
   @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      // 입력 방어 — 실수로 trim/lowercase 빠진 값이 와도 일관된 이메일로 요청
+      final normalizedEmail = EmailValidator.normalize(email);
+      await _auth.sendPasswordResetEmail(email: normalizedEmail);
+    } on FirebaseAuthException catch (e) {
+      throw _convertAuthException(e);
+    }
+  }
+
+  @override
   Future<UserModel?> getCurrentUser() async {
     final user = _auth.currentUser;
     if (user == null) return null;

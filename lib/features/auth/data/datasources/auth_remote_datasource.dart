@@ -8,6 +8,11 @@ abstract class AuthRemoteDataSource {
   Future<UserModel> signInWithApple();
   Future<void> signOut();
   Future<UserModel?> getCurrentUser();
+
+  // 비밀번호 재설정 메일 발송
+  // 보안: 등록된 이메일 여부와 무관하게 상위 레이어에서 동일 메시지를 표시한다.
+  // (FirebaseAuthException user-not-found 를 던져도 상위에서 성공 응답과 동일하게 취급)
+  Future<void> sendPasswordResetEmail(String email);
 }
 
 // Firebase 실제 구현체는 Firebase 연동 시 별도 파일로 구현

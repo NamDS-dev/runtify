@@ -67,4 +67,10 @@ class AuthMockDataSource implements AuthRemoteDataSource {
   Future<UserModel?> getCurrentUser() async {
     return _currentUser;
   }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    // 데모 모드에서는 실제 발송 없이 no-op
+    await Future.delayed(const Duration(milliseconds: 400));
+  }
 }
