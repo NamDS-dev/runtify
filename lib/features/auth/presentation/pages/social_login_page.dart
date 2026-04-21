@@ -53,14 +53,17 @@ class _SocialLoginPageState extends ConsumerState<SocialLoginPage> {
 
               const Spacer(flex: 2),
 
-              // ── 소셜 로그인 버튼들 ──────────────────────────────────────────
-              _buildAppleButton(),
+              // ── 소셜 로그인 버튼들 (디자인 확정 순서: 카카오 → 네이버 → Google → Apple) ──
+              _buildKakaoButton(),
+              const SizedBox(height: 12),
+
+              _buildNaverButton(),
               const SizedBox(height: 12),
 
               _buildGoogleButton(),
               const SizedBox(height: 12),
 
-              _buildKakaoButton(),
+              _buildAppleButton(),
 
               const SizedBox(height: 28),
 
@@ -187,24 +190,15 @@ class _SocialLoginPageState extends ConsumerState<SocialLoginPage> {
   }
 
   // 카카오 로그인 버튼 (카카오 노란색)
+  // Figma에는 💬 이모지로 카카오 공식 말풍선 로고를 암시 — SVG 에셋 확보 전까지 유지
   Widget _buildKakaoButton() {
     return _SocialButton(
-      onTap: _isLoading
-          ? null
-          : () {
-              // 카카오 로그인은 Phase B (Cloud Functions 연동 필요)
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('카카오 로그인은 곧 지원될 예정입니다'),
-                  backgroundColor: Color(0xFF3A3A3A),
-                ),
-              );
-            },
+      onTap: _isLoading ? null : _showComingSoonSnackBar,
       backgroundColor: const Color(0xFFFEE500), // 카카오 노란색
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('💛', style: TextStyle(fontSize: 20)),
+          Text('💬', style: TextStyle(fontSize: 20)),
           SizedBox(width: 10),
           Text(
             '카카오로 계속하기',
@@ -215,6 +209,40 @@ class _SocialLoginPageState extends ConsumerState<SocialLoginPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // 네이버 로그인 버튼 (네이버 공식 그린 #03C75A)
+  // SDK 연동 전까지 "곧 만나보실 수 있어요!" 안내 (카카오와 동일 처리)
+  Widget _buildNaverButton() {
+    return _SocialButton(
+      onTap: _isLoading ? null : _showComingSoonSnackBar,
+      backgroundColor: const Color(0xFF03C75A), // 네이버 그린
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _NaverLogo(),
+          SizedBox(width: 10),
+          Text(
+            '네이버로 계속하기',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 준비 중인 소셜 로그인(카카오/네이버) 공통 안내
+  void _showComingSoonSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('곧 만나보실 수 있어요!'),
+        backgroundColor: Color(0xFF3A3A3A),
       ),
     );
   }
@@ -358,6 +386,30 @@ class _GoogleLogo extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── 네이버 'N' 로고 위젯 ────────────────────────────────────────────────────
+// 공식 SVG 에셋 확보 전까지 흰색 Bold 'N' 텍스트로 대체
+class _NaverLogo extends StatelessWidget {
+  const _NaverLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: 22,
+      height: 22,
+      child: Center(
+        child: Text(
+          'N',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }

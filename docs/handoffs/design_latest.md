@@ -1,55 +1,102 @@
 ---
-feature: 크루 이벤트 (그룹 러닝 모집)
+feature: 소셜 로그인 화면 — 카카오·네이버 버튼 추가 + 순서 재배치
 status: done
-date: 2026-04-12
+date: 2026-04-22
 ---
 
 ## Figma 프레임
 | 화면 | ID | x | y |
 |------|-----|---|---|
-| 5-SUB. Crew Event List | 288:68 | 5760 | 924 |
-| 5-SUB. Crew Event Create | 288:69 | 5760 | 1848 |
+| 1-NEW. Login (Social) | 118:2 | 0 | 0 |
 
-## 이벤트 목록 (288:68)
-- 앱바: "← 크루 이벤트"
-- 다가오는 이벤트 섹션: #FFFFFF 16px Bold
-  - 이벤트 카드: #252525, cornerRadius 16, 358×160
-    - 날짜/시간: #FF4D00 12px SemiBold
-    - 제목: "🏃 토요 한강 러닝" #FFFFFF 18px Bold
-    - 장소: "📍 반포한강공원 · 5km 코스" #9E9E9E 13px
-    - 참가자: "👥 8 / 15명 참가" #808080 12px
-    - 참가하기 버튼: #FF4D00, cornerRadius 8, 326×40
-- 지난 이벤트 섹션: #9E9E9E 16px Bold
-  - 카드: #1A1A1A, cornerRadius 16, 회색 텍스트
-- 이벤트 만들기 FAB: #FF4D00, 56×56, 📅, 리더에게만
+## 변경 요약
+- 버튼 순서 재배치: **카카오 → 네이버 → Google → Apple** (기존: Apple → Google → 카카오)
+- **네이버 버튼 신규 추가** (308:143 / 308:144)
+- 카카오 버튼 아이콘 교체: 💛 → 💬 (공식 말풍선 로고 암시)
+- 서브타이틀(118:7)을 y=340 → y=310으로 상향 이동해 4버튼 세로 공간 확보
 
-## 이벤트 생성 BottomSheet (288:69)
-- 딤: #000000 50%
-- BottomSheet: #1A1A1A, cornerRadius 24
-- 핸들바: 48×4, grey.600
-- 제목: "📅 이벤트 만들기" #FFFFFF 18px Bold
-- 필드 3개 (모두 #252525, cornerRadius 12):
-  - 이벤트 제목: TextField (최대 30자)
-  - 날짜: showDatePicker (캘린더), 시간: CupertinoPicker (휠 피커)
-  - 장소: TextField
-- 이벤트 만들기 버튼: #FF4D00, cornerRadius 14, 350×52
+## 레이아웃 좌표 (x, y, w, h)
 
-## Firestore 구조
-```
-crews/{crewId}/events/{eventId}
-  title: string
-  date: timestamp
-  locationName: string
-  participantIds: [userId, ...]
-  createdBy: userId
-  createdAt: timestamp
-  status: "upcoming" | "completed"
-```
+### 유지되는 상단 영역
+| 요소 | 노드 ID | 위치 | 변경 |
+|------|---------|------|------|
+| Logo BG (ellipse) | 118:3 | (159, 120, 72, 72) | 유지 |
+| Logo Icon 🔥 | 118:4 | (183, 138) | 유지 |
+| App Title "RUNTIFY" | 118:5 | (95, 215) | 유지 |
+| Tagline | 118:6 | (95, 258) | 유지 |
+| Subtitle | 118:7 | (24, 310) | y 340→310 |
+
+### 소셜 버튼 (새 순서, 간격 16px)
+| 순서 | 버튼 | 배경색 | 노드 ID | 위치 (x, y) | 텍스트 |
+|------|------|--------|---------|-------------|--------|
+| 1 | 카카오 | #FEE500 | 118:12 | (24, 360) | 💬  카카오로 계속하기 (#191414) |
+| 2 | **네이버** | **#03C75A** | **308:143** | **(24, 432)** | **N  네이버로 계속하기 (#FFFFFF)** |
+| 3 | Google | #252525 + stroke #666666 | 118:10 | (24, 504) | G  Google로 계속하기 (#FFFFFF) |
+| 4 | Apple | #FFFFFF | 118:8 | (24, 576) | 🍎  Apple로 계속하기 (#0D0D0D) |
+
+- 공통: width 342, height 56, cornerRadius 14
+- 텍스트: Inter SemiBold 16pt, CENTER, width 342
+
+### iOS 전용 배지 (Apple 버튼 우측 상단)
+| 요소 | 노드 ID | 위치 |
+|------|---------|------|
+| iOS Badge BG | 118:19 | (300, 558, 46, 18) |
+| iOS Badge Text | 118:20 | (300, 560) |
+
+⚠️ iOS 배지가 Google 버튼(y=504~560) 끝부분과 시각적으로 살짝 겹치는 인상이 있지만, 원래 디자인 의도(Apple 버튼 외측 상단에 얹힘) 유지. 거슬리면 Apple 버튼 내측 우측(예: x=310, y=586)으로 이동 가능.
+
+### 구분선 & Runtify 로그인 영역
+| 요소 | 노드 ID | 위치 |
+|------|---------|------|
+| Divider Left | 118:14 | (24, 652, 140×1) |
+| Divider Right | 118:15 | (226, 652, 140×1) |
+| Divider Text "또는" | 118:16 | (175, 642) |
+| Runtify Login Button | 118:21 | (24, 672, 342×56) |
+| Runtify Login Button Text | 118:22 | (24, 690) "🔥  Runtify 계정으로 로그인" |
+
+### 약관 (유지)
+| 요소 | 노드 ID | 위치 |
+|------|---------|------|
+| Terms Text | 118:17 | (24, 760) |
+| Terms Links | 118:18 | (24, 786) |
+
+## 컬러 스펙
+- 카카오: 배경 #FEE500, 텍스트 #191414
+- **네이버: 배경 #03C75A, 텍스트 #FFFFFF (네이버 공식 그린)**
+- Google: 배경 #252525, stroke #666666, 텍스트 #FFFFFF
+- Apple: 배경 #FFFFFF, 텍스트 #0D0D0D
+- Runtify: 배경 #1A1A1A, stroke #FF4D00 50%, 텍스트 #FF4D00
 
 ## 코딩 에이전트 참고사항
-- 크루 상세 정보 탭에 "이벤트" 섹션 추가 또는 별도 라우트 /crew/events
-- 진입: 정보 탭의 위클리 챌린지 카드 아래 또는 AppBar 아이콘
-- 참가하기: participantIds에 userId toggle (arrayUnion/arrayRemove)
-- 날짜 선택: showDatePicker + showTimePicker (Flutter 기본)
-- 지난 이벤트: date < now → status=completed, 회색 처리
-- 이벤트 생성 시 content_validator.dart로 제목/장소 검증
+
+### 파일: `lib/features/auth/presentation/pages/social_login_page.dart`
+
+1. **버튼 순서 변경**: `_buildAppleButton` → `_buildGoogleButton` → `_buildKakaoButton` 순서를 **`_buildKakaoButton` → `_buildNaverButton` → `_buildGoogleButton` → `_buildAppleButton`** 으로 재배치
+
+2. **네이버 버튼 추가** (`_buildNaverButton`):
+   - 배경 `Color(0xFF03C75A)`
+   - 텍스트 "네이버로 계속하기" (흰색, w600, 15pt)
+   - 로고: 흰색 'N' 22×22 (Apple/Google과 동일 패턴)
+   - 탭 동작: 카카오와 동일한 "곧 만나보실 수 있어요!" SnackBar
+
+3. **카카오/네이버 SnackBar 메시지 통일**:
+   ```dart
+   ScaffoldMessenger.of(context).showSnackBar(
+     const SnackBar(
+       content: Text('곧 만나보실 수 있어요!'),
+       backgroundColor: Color(0xFF3A3A3A),
+     ),
+   );
+   ```
+   기존 "카카오 로그인은 곧 지원될 예정입니다" → 위 문구로 교체
+
+4. **카카오 공식 로고 에셋**: Figma에는 💬 이모지로 표현했으나, Flutter 구현 시에는 `assets/images/kakao_logo.svg` (또는 `.png`) 추가해 `SvgPicture.asset` / `Image.asset`으로 교체 권장. 에셋 미확보 시 💬 유지.
+
+5. **네이버 로고**: 간단한 'N' 텍스트(흰색 Bold 18pt)로 표현해도 무방. 공식 로고 SVG 확보 시 교체.
+
+6. **Apple 버튼 iOS 배지**: 현재 코드에는 없음. Figma에만 존재. 플랫폼 분기 표시가 필요할 시 `Platform.isIOS` 조건부 렌더링으로 추가 가능.
+
+### 참고 — Figma vs 현재 코드 높이 차이
+- Figma: 버튼 height 56
+- 현재 코드: height 54
+- 코드에 맞춰 진행 또는 54→56 통일 결정 필요 (사소)

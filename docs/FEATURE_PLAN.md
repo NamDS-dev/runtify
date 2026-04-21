@@ -1,8 +1,9 @@
 # Runtify 기능 기획서
 
 > 작성일: 2026-03-04
-> 최종 수정: 2026-03-26
+> 최종 수정: 2026-04-21
 > 규칙: **Figma 디자인 승인 → 코드 구현** 순서 필수
+> 관련 문서: [POLICY.md](POLICY.md) — 운영 정책 결정(이메일 인증·레이트 리밋·세션·탈퇴)
 
 ---
 
@@ -13,6 +14,32 @@
 > 🟢 = 야간 자동 구현 대상 / 🟡 = 사용자 검토 필요 / 🔴 = 정책·보안 결정 필요
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
+
+- [ ] **[인증] 비밀번호 표시/숨김 토글 (2026-04-22 발견)**
+  - 현재: `login_page.dart`의 비밀번호 필드가 `obscureText: true` 고정 — 사용자가 입력 값 확인 불가
+  - 개선: 눈 아이콘(suffixIcon) 토글 추가 — 탭 시 `obscureText` on/off
+  - 근거: 모바일 입력 오류 축소(오타 방지), 접근성 향상. 업계 표준 UX
+  - 구현 파일 후보: `lib/features/auth/presentation/pages/login_page.dart`
+  - 예상: 20분
+
+- [ ] **[인증] 회원가입 시 비밀번호 확인 입력 필드 (2026-04-22 발견)**
+  - 현재: 회원가입 모드에서 비밀번호를 1회만 입력 → 오타 시 로그인 불가 → 비밀번호 재설정 강제
+  - 개선: 회원가입 모드에만 "비밀번호 확인" 필드 추가. 두 값 불일치 시 validator 에러
+  - 근거: 신규 가입자의 즉시 로그인 실패 방지. 표준 가입 UX
+  - 구현 파일 후보: `lib/features/auth/presentation/pages/login_page.dart`
+  - 예상: 30분
+
+- [ ] **[인증] 닉네임 입력 검증·정규화 (2026-04-22 발견)**
+  - 현재: `nameController.text.trim()`만 수행. 길이 제한/문자 필터 없음 (빈 값 체크만)
+  - 개선: `lib/core/validators/name_validator.dart` 신설 — 공백 trim + 길이 2~20자 + 앞뒤 공백 제거 + 제어 문자 차단. 회원가입 폼 validator 교체
+  - 근거: Firestore에 비정상적 닉네임(긴 공백, 제어 문자, 300자 스팸) 저장 방지. 랭킹/크루 UI 렌더 깨짐 예방
+  - 구현 파일 후보: `lib/core/validators/name_validator.dart` (신규), `login_page.dart`, `test/core/validators/name_validator_test.dart` (신규)
+  - 예상: 25분
+
+- [x] ✅ **[인증] 소셜 로그인 화면 — 카카오·네이버 버튼 + 순서 재배치 (2026-04-22 구현 완료)**
+  - 구현: 버튼 순서 카카오→네이버→Google→Apple 재배치, `_buildNaverButton` 신규(배경 `#03C75A` + 흰 'N' 로고), 카카오·네이버 SnackBar "곧 만나보실 수 있어요!" 통일, 카카오 아이콘 💛→💬
+  - 검증: `flutter analyze` 0 issues + `flutter test` 18건 pass
+  - 파일: `lib/features/auth/presentation/pages/social_login_page.dart`
 
 - [x] ✅ **[인증] Firebase 에러 코드 → 사용자 친화적 메시지 맵핑 확장 (2026-04-20 구현 완료)**
   - 구현: `_convertAuthException` 확장 — `user-not-found`/`wrong-password`/`invalid-credential`을 통일 메시지로 처리(계정 존재 힌트 차단), `network-request-failed`/`user-disabled`/`requires-recent-login`/`operation-not-allowed`/`account-exists-with-different-credential`/`credential-already-in-use`/`expired-action-code`/`invalid-action-code`/`user-token-expired` 추가, default 메시지에서 원본 `e.message` 노출 제거
@@ -34,19 +61,33 @@
   - 검증: `flutter analyze` 0 issues + 단위 테스트 11건 pass
   - 파일: `lib/core/validators/password_validator.dart`, `lib/features/auth/presentation/widgets/password_strength_bar.dart`, `lib/features/auth/presentation/pages/login_page.dart`, `test/core/validators/password_validator_test.dart`
 
-### 🟡 기획 확정 대기 (사용자 검토 후 구현)
+- [ ] **[인증] 비밀번호 재설정 기능 — 하이브리드 템플릿 (2026-04-21 기획 확정)**
+  - 결정: **Firebase 기본 발송 + Console 템플릿만 한국어·브랜드명 커스텀** (자체 도메인·SendGrid는 MVP 이후로 연기)
+  - Firebase Console 작업 (사용자가 직접): Authentication → Templates → Password reset
+    - 언어: **한국어**
+    - Sender name: `Runtify`
+    - Subject: `[Runtify] 비밀번호 재설정 안내`
+    - From: `noreply@<project>.firebaseapp.com` (기본 유지)
+  - Flutter 구현 체크리스트:
+    - [ ] `auth_remote_datasource.dart` 인터페이스에 `sendPasswordResetEmail(String email)` 추가
+    - [ ] `auth_firebase_datasource.dart`에서 `FirebaseAuth.sendPasswordResetEmail(email: normalized)` 호출 + 기존 `_convertAuthException` 재사용
+    - [ ] `AuthRepository`/`AuthRepositoryImpl`에 `Either<Failure, void> sendPasswordReset(...)` 추가
+    - [ ] `ForgotPasswordUseCase` 신설 (`lib/features/auth/domain/usecases/forgot_password_usecase.dart`)
+    - [ ] `auth_provider.dart`에 `sendPasswordReset(email)` 메서드 추가
+    - [ ] `login_page.dart`: 로그인 모드 하단에 "비밀번호 찾기" TextButton → `showModalBottomSheet`로 이메일 입력 폼 → 제출 시 로딩/성공/에러 SnackBar
+    - [ ] 이메일은 기존 `EmailValidator.validate` + `.normalize`로 검증·정규화
+    - [ ] 단위 테스트: `ForgotPasswordUseCase` 정상/실패 2건, datasource에서 `invalid-email`/`user-not-found` 예외 매핑 유지 확인
+  - 보안 노트: `user-not-found` 에러를 그대로 노출하지 말고 **"해당 이메일이 등록되어 있다면 재설정 메일이 발송됩니다"** 형태로 통일 응답 (이미 `_convertAuthException`에서 계정 존재 힌트 차단됨 — UseCase 레벨에서 성공/실패를 구분하지 않고 동일 안내 메시지 표시)
+  - 파일: `lib/features/auth/data/datasources/auth_remote_datasource.dart`, `auth_firebase_datasource.dart`, `auth_repository_impl.dart`, `domain/repositories/auth_repository.dart`, `domain/usecases/forgot_password_usecase.dart` (신규), `presentation/providers/auth_provider.dart`, `presentation/pages/login_page.dart`, `test/features/auth/forgot_password_usecase_test.dart` (신규)
+  - 예상: 75분 (Flutter 구현) + 10분 (Firebase Console 설정)
 
-- [ ] **[인증] 비밀번호 재설정 기능 (2026-04-20 발견)**
-  - 현재: 로그인 페이지에 "비밀번호 찾기" 버튼 없음. Firebase `sendPasswordResetEmail` 미사용
-  - 개선: 로그인 페이지 하단에 "비밀번호 찾기" 버튼 → 이메일 입력 모달 → `sendPasswordResetEmail` 호출 → 성공 메시지
-  - 검토 필요: 재설정 이메일 템플릿을 Firebase 기본으로 갈지 커스텀으로 갈지 (브랜드)
-  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/domain/usecases/forgot_password_usecase.dart` (신규)
-  - 예상: 75분
+### 🟡 기획 확정 대기 (사용자 검토 후 구현)
 
 - [ ] **[인증] 이메일 인증 (Verification) 플로우 (2026-04-20 발견)**
   - 현재: `signUpWithEmail`에서 계정 생성 후 인증 이메일 자동 발송 없음. 미검증 계정도 전체 기능 접근 가능
   - 개선: `sendEmailVerification()` 호출 + `emailVerified` 필드를 UserEntity에 추가 + 미인증 상태 UI 배너 + 인증 전 특정 기능(크루 가입, 리워드) 제한
   - 검토 필요: 어느 기능까지 인증 없이 허용할지(온보딩 UX vs 정책 강도)
+  - 정책 결정: [POLICY.md § 1](POLICY.md#-1-이메일-인증verification-정책)
   - 파일: `auth_firebase_datasource.dart`, `user_entity.dart`, `user_model.dart`, `login_page.dart`
   - 예상: 120분
 
@@ -54,6 +95,7 @@
   - 현재: 실패 에러만 반환. 3회 이상 실패 시 계정 잠금/대기 없음 (Firebase 측 기본 rate limit만)
   - 개선: 로컬 `SharedPreferences`로 실패 횟수 추적 → 3회 실패 시 60초 대기 강제 + UI 카운트다운
   - 검토 필요: 서버 측(Firebase 규칙/함수) 강화도 추가할지 — Blaze 요금제 전환 검토
+  - 정책 결정: [POLICY.md § 2](POLICY.md#-2-로그인-실패-레이트-리밋-정책)
   - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`
   - 예상: 85분
 
@@ -61,6 +103,7 @@
   - 현재: Firebase ID token 만료(1시간)에 대한 명시적 처리 없음. 갱신 자동화/UI 피드백 미구현
   - 개선: `FirebaseAuth.instance.idTokenChanges()` 스트림 모니터링 → 갱신 실패 시 로그인 리다이렉트. 선택: 30분 유휴 시 강제 재인증
   - 검토 필요: 유휴 시간 정책 정하기 + 기존 러닝 중에 토큰 만료 시 UX 시나리오
+  - 정책 결정: [POLICY.md § 3](POLICY.md#-3-세션-만료-및-토큰-갱신-정책)
   - 파일: `auth_provider.dart`, `lib/core/services/session_manager.dart` (신규)
   - 예상: 95분
 
@@ -75,6 +118,7 @@
     - 유예기간: 즉시 삭제 vs 30일 복구 가능
     - GDPR/CCPA 컴플라이언스 문구 포함 여부
   - **중요**: App Store 14+ 정책상 필수. 미구현 시 심사 거절 가능성
+  - 정책 결정: [POLICY.md § 4](POLICY.md#-4-계정-탈퇴-정책)
   - 파일: `profile_page.dart`, `auth_firebase_datasource.dart`, `delete_account_usecase.dart` (신규)
   - 예상: 110분 + 사용자 정책 결정 시간
 
