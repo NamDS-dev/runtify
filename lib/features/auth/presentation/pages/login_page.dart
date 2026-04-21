@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/validators/email_validator.dart';
+import '../../../../core/validators/name_validator.dart';
 import '../../../../core/validators/password_validator.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/password_strength_bar.dart';
@@ -66,7 +67,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       errorMessage = await authNotifier.signUp(
         normalizedEmail,
         _passwordController.text.trim(),
-        _nameController.text.trim(),
+        NameValidator.normalize(_nameController.text),
       );
     } else {
       errorMessage = await authNotifier.signIn(
@@ -134,8 +135,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     controller: _nameController,
                     label: '닉네임',
                     icon: Icons.person_outline,
-                    validator: (v) =>
-                        v!.isEmpty ? '닉네임을 입력해주세요' : null,
+                    validator: NameValidator.validate,
                   ),
                   const SizedBox(height: 16),
                 ],

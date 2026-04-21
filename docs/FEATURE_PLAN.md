@@ -25,12 +25,10 @@
   - 검증: `flutter analyze` 0 issues + `flutter test` 22건 pass
   - 파일: `lib/features/auth/presentation/pages/login_page.dart`
 
-- [ ] **[인증] 닉네임 입력 검증·정규화 (2026-04-22 발견)**
-  - 현재: `nameController.text.trim()`만 수행. 길이 제한/문자 필터 없음 (빈 값 체크만)
-  - 개선: `lib/core/validators/name_validator.dart` 신설 — 공백 trim + 길이 2~20자 + 앞뒤 공백 제거 + 제어 문자 차단. 회원가입 폼 validator 교체
-  - 근거: Firestore에 비정상적 닉네임(긴 공백, 제어 문자, 300자 스팸) 저장 방지. 랭킹/크루 UI 렌더 깨짐 예방
-  - 구현 파일 후보: `lib/core/validators/name_validator.dart` (신규), `login_page.dart`, `test/core/validators/name_validator_test.dart` (신규)
-  - 예상: 25분
+- [x] ✅ **[인증] 닉네임 입력 검증·정규화 (2026-04-22 구현 완료)**
+  - 구현: `lib/core/validators/name_validator.dart` 신설 — 길이 2~20자 + 제어 문자(U+0000~U+001F, U+007F~U+009F) 차단 + `normalize`는 trim + 내부 다중 공백 단일화. `login_page.dart` validator 교체 + 회원가입 저장 직전 `NameValidator.normalize` 거침
+  - 검증: `flutter analyze` 0 issues + 유닛 테스트 8건 포함 총 30건 pass
+  - 파일: `lib/core/validators/name_validator.dart`, `lib/features/auth/presentation/pages/login_page.dart`, `test/core/validators/name_validator_test.dart` (신규)
 
 - [x] ✅ **[인증] 소셜 로그인 화면 — 카카오·네이버 버튼 + 순서 재배치 (2026-04-22 구현 완료)**
   - 구현: 버튼 순서 카카오→네이버→Google→Apple 재배치, `_buildNaverButton` 신규(배경 `#03C75A` + 흰 'N' 로고), 카카오·네이버 SnackBar "곧 만나보실 수 있어요!" 통일, 카카오 아이콘 💛→💬
