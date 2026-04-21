@@ -15,19 +15,15 @@
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
 
-- [ ] **[인증] 비밀번호 표시/숨김 토글 (2026-04-22 발견)**
-  - 현재: `login_page.dart`의 비밀번호 필드가 `obscureText: true` 고정 — 사용자가 입력 값 확인 불가
-  - 개선: 눈 아이콘(suffixIcon) 토글 추가 — 탭 시 `obscureText` on/off
-  - 근거: 모바일 입력 오류 축소(오타 방지), 접근성 향상. 업계 표준 UX
-  - 구현 파일 후보: `lib/features/auth/presentation/pages/login_page.dart`
-  - 예상: 20분
+- [x] ✅ **[인증] 비밀번호 표시/숨김 토글 (2026-04-22 구현 완료)**
+  - 구현: `_buildPasswordField` 헬퍼 신설 — suffix 눈 아이콘 + `_obscurePassword`/`_obscureConfirmPassword` state 토글. `autocorrect: false`/`enableSuggestions: false`로 자동완성·개인사전 학습 차단
+  - 검증: `flutter analyze` 0 issues + `flutter test` 22건 pass
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`
 
-- [ ] **[인증] 회원가입 시 비밀번호 확인 입력 필드 (2026-04-22 발견)**
-  - 현재: 회원가입 모드에서 비밀번호를 1회만 입력 → 오타 시 로그인 불가 → 비밀번호 재설정 강제
-  - 개선: 회원가입 모드에만 "비밀번호 확인" 필드 추가. 두 값 불일치 시 validator 에러
-  - 근거: 신규 가입자의 즉시 로그인 실패 방지. 표준 가입 UX
-  - 구현 파일 후보: `lib/features/auth/presentation/pages/login_page.dart`
-  - 예상: 30분
+- [x] ✅ **[인증] 회원가입 시 비밀번호 확인 입력 필드 (2026-04-22 구현 완료)**
+  - 구현: 회원가입 모드에서만 "비밀번호 확인" 필드 표시 — validator로 원본과 불일치 시 "비밀번호가 일치하지 않습니다" 에러. 눈 아이콘은 비밀번호 필드와 별도 토글
+  - 검증: `flutter analyze` 0 issues + `flutter test` 22건 pass
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`
 
 - [ ] **[인증] 닉네임 입력 검증·정규화 (2026-04-22 발견)**
   - 현재: `nameController.text.trim()`만 수행. 길이 제한/문자 필터 없음 (빈 값 체크만)

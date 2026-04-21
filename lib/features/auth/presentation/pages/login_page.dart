@@ -18,12 +18,15 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   bool _isSignUpMode = false; // true면 회원가입 모드
   bool _isLoading = false;
   String _password = ''; // 실시간 강도 표시용
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void initState() {
@@ -43,6 +46,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     _passwordController.removeListener(_onPasswordChanged);
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _nameController.dispose();
     super.dispose();
   }
@@ -145,17 +149,41 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 const SizedBox(height: 16),
 
-                _buildTextField(
+                _buildPasswordField(
                   controller: _passwordController,
                   label: '비밀번호',
-                  icon: Icons.lock_outline,
-                  obscureText: true,
+                  obscure: _obscurePassword,
+                  onToggle: () => setState(
+                    () => _obscurePassword = !_obscurePassword,
+                  ),
                   validator: _isSignUpMode
                       ? PasswordValidator.validateForSignUp
                       : PasswordValidator.validateForSignIn,
                 ),
                 if (_isSignUpMode)
                   PasswordStrengthBar(password: _password),
+
+                // 회원가입 시 비밀번호 확인 입력 — 오타로 인한 즉시 로그인 실패 방지
+                if (_isSignUpMode) ...[
+                  const SizedBox(height: 16),
+                  _buildPasswordField(
+                    controller: _confirmPasswordController,
+                    label: '비밀번호 확인',
+                    obscure: _obscureConfirmPassword,
+                    onToggle: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return '비밀번호를 한 번 더 입력해주세요';
+                      }
+                      if (value != _passwordController.text) {
+                        return '비밀번호가 일치하지 않습니다';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
                 const SizedBox(height: 32),
 
                 // 로그인/회원가입 버튼
@@ -215,6 +243,48 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetCtx) => _ForgotPasswordSheet(initialEmail: seededEmail),
+    );
+  }
+
+  // 비밀번호 전용 TextFormField — suffix 눈 아이콘으로 표시/숨김 토글
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool obscure,
+    required VoidCallback onToggle,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      validator: validator,
+      // 자동완성·개인사전 학습 차단 (비밀번호 노출/힌트 방지)
+      autocorrect: false,
+      enableSuggestions: false,
+      style: TextStyle(color: context.colors.textPrimary),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: context.colors.textSecondary),
+        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primary),
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            color: context.colors.textSecondary,
+          ),
+          tooltip: obscure ? '비밀번호 표시' : '비밀번호 숨기기',
+          onPressed: onToggle,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: context.colors.surface),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: AppTheme.primary),
+        ),
+        filled: true,
+        fillColor: context.colors.surface,
+      ),
     );
   }
 
