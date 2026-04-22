@@ -15,6 +15,41 @@
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
 
+- [ ] **[인증] 이메일 인증 플로우 (2026-04-23 정책 확정)**
+  - 정책: [POLICY.md § 1](POLICY.md#-1-이메일-인증verification-정책) — 러닝 1회 유예 + 기능 작동 시 인증 유도
+  - 구현 체크리스트:
+    - [ ] `UserModel`/`UserEntity`에 `emailVerified: bool` 필드 추가 (Firestore 직렬화 포함)
+    - [ ] `AuthFirebaseDataSource.signUpWithEmail`에서 계정 생성 직후 `sendEmailVerification()` 호출
+    - [ ] OAuth 가입자(`_createUserIfNotExists`)는 `emailVerified: true`로 저장
+    - [ ] 인증 유도 공통 다이얼로그 위젯 `VerifyEmailDialog` 신설 — "인증 메일 재발송" + "나중에" 버튼
+    - [ ] 러닝 종료 시점(`running_result_page.dart` 저장 직전) 인증 상태 체크 → 미인증이면 로컬 큐잉 + 다이얼로그 표시
+    - [ ] 크루 가입/리워드 교환/랭킹 등록 등 기능 작동 시 동일 다이얼로그 트리거 (공통 가드 `requireEmailVerified()` 헬퍼)
+    - [ ] 재발송 쿨다운 60초 (`SharedPreferences` 타임스탬프 저장)
+    - [ ] 로컬 큐잉된 러닝 데이터 — 인증 완료 감지 시 자동 flush (`idTokenChanges` 또는 앱 재시작 시 체크)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/auth/domain/entities/user_entity.dart`, `data/models/user_model.dart`, `data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/presentation/widgets/verify_email_dialog.dart` (신규), `lib/core/auth/require_email_verified.dart` (신규), `lib/features/running/presentation/pages/running_result_page.dart`, `lib/features/crew/...`, `lib/features/reward/...`
+  - 예상: 120분
+
+- [ ] **[인증] 세션 만료 및 러닝 중 로그아웃 차단 (2026-04-23 정책 확정)**
+  - 정책: [POLICY.md § 3](POLICY.md#-3-세션-만료-및-토큰-갱신-정책) — 러닝 중 로그아웃 X, 종료 시점 저장 + 로컬 큐잉
+  - 구현 체크리스트:
+    - [ ] `RunningProvider`에 `isRunningInProgress: bool` getter/state 노출
+    - [ ] `AuthNotifier`의 `idTokenChanges()` 리스너에서 `isRunningInProgress == true` 시 로그아웃 트리거 무시 (로그만 찍기)
+    - [ ] `running_firestore_datasource.dart`의 `saveSession`이 현재 종료 버튼 1회 저장인지 점검 + 아니면 수정 (중간 저장 제거)
+    - [ ] 저장 실패 시 로컬 큐(`SharedPreferences` 또는 Hive — 선택) 보관
+    - [ ] 앱 재시작 또는 온라인 복귀 시 큐 자동 flush (`ConnectivityPlus` 스트림 구독)
+    - [ ] 홈 상단에 "동기화 대기 N건" 배너 — 큐가 비어있지 않을 때만 표시
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과 (큐 flush 단위 테스트 포함)
+  - 파일: `lib/features/running/presentation/providers/running_provider.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`, `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/core/services/running_sync_queue.dart` (신규)
+  - 예상: 60분
+
+- [x] ✅ **[인증] 로그인 실패 레이트 리밋 — Phase 1 로컬 (2026-04-23 구현 완료)**
+  - 구현: `core/services/login_rate_limiter.dart` 신설 — maxAttempts(3) + lockDuration(60s), SharedPreferences 키는 정규화된 이메일의 hashCode(36진수)로 난독화. `AuthNotifier.signIn`에서 호출 전 사전 잠금 체크(즉시 차단), 실패 시 `recordFailure`, 성공 시 `resetOnSuccess`. 잠금 만료 후 자동 카운터 정리. 만료 시간 오차를 고려해 첫 잠금 안내 문구를 정확한 잔여 초수로 노출.
+  - 카운트다운 UI는 다음 세션에서 login_page.dart에 추가 예정(현재는 에러 SnackBar 문구에 남은 초 표시)
+  - 검증: `flutter analyze` 0 issues + 단위 테스트 7건 포함 총 37건 pass (최초/미만 실패/3회 잠금/만료 후 해제/리셋/독립 카운터/정규화)
+  - 파일: `lib/core/services/login_rate_limiter.dart` (신규), `lib/features/auth/presentation/providers/auth_provider.dart`, `test/core/services/login_rate_limiter_test.dart` (신규)
+  - 한계: 앱 재설치 시 초기화 (Phase 2 서버 측 강화는 출시 직전)
+
 - [x] ✅ **[인증] 비밀번호 표시/숨김 토글 (2026-04-22 구현 완료)**
   - 구현: `_buildPasswordField` 헬퍼 신설 — suffix 눈 아이콘 + `_obscurePassword`/`_obscureConfirmPassword` state 토글. `autocorrect: false`/`enableSuggestions: false`로 자동완성·개인사전 학습 차단
   - 검증: `flutter analyze` 0 issues + `flutter test` 22건 pass
@@ -60,7 +95,7 @@
   - 보안: UseCase 레벨에서 네트워크/형식 에러만 Left, 계정 존재 여부와 무관하게 "해당 이메일이 등록되어 있다면 재설정 메일이 발송됩니다" 통일 응답. `_convertAuthException`은 기존 매핑 재사용
   - 검증: `flutter analyze` 0 issues + `flutter test` 22건 pass (신규 4건: 정상/형식 오류/빈 입력/Repository 실패)
   - 파일: `lib/features/auth/data/datasources/auth_remote_datasource.dart`, `auth_firebase_datasource.dart`, `auth_mock_datasource.dart`, `data/repositories/auth_repository_impl.dart`, `domain/repositories/auth_repository.dart`, `domain/usecases/forgot_password_usecase.dart` (신규), `presentation/providers/auth_provider.dart`, `presentation/pages/login_page.dart`, `test/features/auth/forgot_password_usecase_test.dart` (신규)
-  - **⚠️ 남은 작업 (사용자 직접 수행 필요)**: Firebase Console → Authentication → Templates → Password reset → 언어 한국어, Sender `Runtify`, Subject `[Runtify] 비밀번호 재설정 안내` 설정
+  - ✅ Firebase Console 템플릿 설정 완료 (2026-04-23)
 
 ### 🟡 기획 확정 대기 (사용자 검토 후 구현)
 
@@ -539,6 +574,8 @@ Phase 4 (홈 지역 설정 UI) → Phase 5 (랭킹 기여 지역 분리) → Pha
 | Health Connect 온보딩 UI | ⬜ 개발 필요 | 유저에게 Health Connect + 삼성 헬스 동기화 안내 |
 | 워치 러닝 기록 홈 연동 | ⬜ 개발 필요 | Health Connect 과거 데이터 → 홈 대시보드 표시 |
 | BLE 연결 온보딩 UI | ⬜ 개발 필요 | 갤럭시 워치 심박수 페어링 안내 |
+| 🔐 레이트 리밋 Phase 2 (서버) | ⬜ **출시 직전 검토** | Cloud Functions로 이메일별 실패 카운터 → 분산 공격 방어. **Blaze 요금제 전환 필요** ($0~5/월 예상). [POLICY § 2](POLICY.md#-2-로그인-실패-레이트-리밋-정책) 참조 |
+| 🔴 계정 탈퇴 플로우 | ⬜ **출시 직전 필수** | App Store 심사 요건. 정책 결정 후 구현. [POLICY § 4](POLICY.md#-4-계정-탈퇴-정책) |
 | Play Store 출시 | ⬜ 준비 필요 | 스토어 등록, 스크린샷, 설명 |
 
 #### Android 실기기 테스트 이슈 (2026-04-19 발견)

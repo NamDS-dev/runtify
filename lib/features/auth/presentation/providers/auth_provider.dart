@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../../core/services/login_rate_limiter.dart';
 import '../../data/datasources/auth_firebase_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
@@ -42,22 +43,28 @@ final forgotPasswordUseCaseProvider = Provider((ref) {
   return ForgotPasswordUseCase(ref.read(authRepositoryProvider));
 });
 
+// 로그인 실패 레이트 리밋 (Phase 1: 로컬만)
+final loginRateLimiterProvider = Provider((ref) => LoginRateLimiter());
+
 // 현재 로그인된 유저 상태
 class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
   final AuthRemoteDataSource _dataSource;
   final SignInUseCase _signInUseCase;
   final SignUpUseCase _signUpUseCase;
   final ForgotPasswordUseCase _forgotPasswordUseCase;
+  final LoginRateLimiter _rateLimiter;
 
   AuthNotifier({
     required AuthRemoteDataSource dataSource,
     required SignInUseCase signInUseCase,
     required SignUpUseCase signUpUseCase,
     required ForgotPasswordUseCase forgotPasswordUseCase,
+    required LoginRateLimiter rateLimiter,
   })  : _dataSource = dataSource,
         _signInUseCase = signInUseCase,
         _signUpUseCase = signUpUseCase,
         _forgotPasswordUseCase = forgotPasswordUseCase,
+        _rateLimiter = rateLimiter,
         super(const AsyncValue.loading()) {
     _checkCurrentUser();
   }
@@ -70,21 +77,33 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
 
   // 로그인
   Future<String?> signIn(String email, String password) async {
+    // 사전 잠금 체크 — 3회 실패 후 60초 내 재시도는 네트워크 요청 없이 즉시 차단
+    final remaining = await _rateLimiter.lockRemaining(email);
+    if (remaining != null) {
+      state = const AsyncValue.data(null);
+      return '로그인 시도가 많습니다. ${remaining.inSeconds}초 후 다시 시도해주세요';
+    }
+
     state = const AsyncValue.loading();
     final result = await _signInUseCase(
       SignInParams(email: email, password: password),
     );
 
-    return result.fold(
-      (failure) {
-        state = const AsyncValue.data(null);
-        return failure.message;
-      },
-      (user) {
-        state = AsyncValue.data(user);
-        return null; // null = 성공
-      },
-    );
+    if (result.isRight()) {
+      final user = result.getOrElse(() => throw StateError('unreachable'));
+      state = AsyncValue.data(user);
+      await _rateLimiter.resetOnSuccess(email);
+      return null;
+    }
+
+    // 실패 케이스 — 카운터 증가 + 이번 실패로 잠금이 발생했는지 확인
+    state = const AsyncValue.data(null);
+    await _rateLimiter.recordFailure(email);
+    final nowLocked = await _rateLimiter.lockRemaining(email);
+    if (nowLocked != null) {
+      return '로그인 시도가 많습니다. ${nowLocked.inSeconds}초 후 다시 시도해주세요';
+    }
+    return result.fold((f) => f.message, (_) => null);
   }
 
   // 회원가입
@@ -160,6 +179,7 @@ final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<UserEntity?>
     signInUseCase: ref.read(signInUseCaseProvider),
     signUpUseCase: ref.read(signUpUseCaseProvider),
     forgotPasswordUseCase: ref.read(forgotPasswordUseCaseProvider),
+    rateLimiter: ref.read(loginRateLimiterProvider),
   ),
 );
 
