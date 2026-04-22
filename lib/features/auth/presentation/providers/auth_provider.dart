@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../../core/services/email_verification_cooldown.dart';
 import '../../../../core/services/login_rate_limiter.dart';
 import '../../data/datasources/auth_firebase_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -45,6 +46,10 @@ final forgotPasswordUseCaseProvider = Provider((ref) {
 
 // 로그인 실패 레이트 리밋 (Phase 1: 로컬만)
 final loginRateLimiterProvider = Provider((ref) => LoginRateLimiter());
+
+// 이메일 인증 재발송 쿨다운 (60초)
+final emailVerificationCooldownProvider =
+    Provider((ref) => EmailVerificationCooldown());
 
 // 현재 로그인된 유저 상태
 class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
@@ -170,6 +175,51 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
       ForgotPasswordParams(email: email),
     );
     return result.fold((failure) => failure.message, (_) => null);
+  }
+
+  // 현재 로그인된 사용자에게 이메일 인증 메일 재발송
+  // 반환: null = 발송됨, String = 에러 메시지(쿨다운/네트워크 등)
+  Future<String?> resendEmailVerification({
+    required EmailVerificationCooldown cooldown,
+  }) async {
+    final user = state.valueOrNull;
+    if (user == null) {
+      return '로그인 상태를 확인해주세요';
+    }
+
+    final remaining = await cooldown.remaining(user.id);
+    if (remaining != null) {
+      return '${remaining.inSeconds}초 후 다시 시도해주세요';
+    }
+
+    try {
+      // AuthFirebaseDataSource 의 확장 메서드로 직접 호출
+      // (_dataSource 는 인터페이스 타입이라 구현체 캐스팅 필요)
+      final impl = _dataSource;
+      if (impl is AuthFirebaseDataSource) {
+        await impl.sendCurrentUserEmailVerification();
+        await cooldown.markSent(user.id);
+        return null;
+      }
+      // 데모 모드는 no-op 성공 처리
+      await cooldown.markSent(user.id);
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  // 사용자가 "인증 완료했어요" 버튼 눌렀을 때 Firebase Auth reload 후 상태 갱신
+  // 반환: true = 인증 완료 확인됨, false = 아직 미완료
+  Future<bool> reloadEmailVerification() async {
+    final impl = _dataSource;
+    if (impl is! AuthFirebaseDataSource) return false;
+    final verified = await impl.reloadAndSyncEmailVerification();
+    if (verified) {
+      // 상태 갱신 — 최신 UserEntity 다시 로드
+      await refreshUser();
+    }
+    return verified;
   }
 }
 

@@ -15,20 +15,25 @@
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
 
-- [ ] **[인증] 이메일 인증 플로우 (2026-04-23 정책 확정)**
+- [ ] **[인증] 이메일 인증 플로우 — 스캐폴딩 완료 / 기능 가드 통합 남음 (2026-04-23 부분 구현)**
   - 정책: [POLICY.md § 1](POLICY.md#-1-이메일-인증verification-정책) — 러닝 1회 유예 + 기능 작동 시 인증 유도
-  - 구현 체크리스트:
-    - [ ] `UserModel`/`UserEntity`에 `emailVerified: bool` 필드 추가 (Firestore 직렬화 포함)
-    - [ ] `AuthFirebaseDataSource.signUpWithEmail`에서 계정 생성 직후 `sendEmailVerification()` 호출
-    - [ ] OAuth 가입자(`_createUserIfNotExists`)는 `emailVerified: true`로 저장
-    - [ ] 인증 유도 공통 다이얼로그 위젯 `VerifyEmailDialog` 신설 — "인증 메일 재발송" + "나중에" 버튼
-    - [ ] 러닝 종료 시점(`running_result_page.dart` 저장 직전) 인증 상태 체크 → 미인증이면 로컬 큐잉 + 다이얼로그 표시
-    - [ ] 크루 가입/리워드 교환/랭킹 등록 등 기능 작동 시 동일 다이얼로그 트리거 (공통 가드 `requireEmailVerified()` 헬퍼)
-    - [ ] 재발송 쿨다운 60초 (`SharedPreferences` 타임스탬프 저장)
+  - ✅ 야간 완료 (2026-04-23):
+    - [x] `UserEntity`/`UserModel`에 `emailVerified: bool` 필드 추가 (Firestore 직렬화 + fromFirestore 기본 false)
+    - [x] `AuthFirebaseDataSource.signUpWithEmail` 계정 생성 직후 `sendEmailVerification()` 자동 호출
+    - [x] OAuth 가입자(Google/Apple)는 `_createUserIfNotExists(emailVerified: true)` 자동 저장
+    - [x] `getCurrentUser` 호출 시 Firebase Auth.emailVerified 와 Firestore 동기화(뒤처진 경우 자동 update)
+    - [x] `sendCurrentUserEmailVerification` + `reloadAndSyncEmailVerification` datasource 메서드
+    - [x] `EmailVerificationCooldown` 신설 (기본 60초, SharedPreferences 기반) + Riverpod provider
+    - [x] `AuthNotifier.resendEmailVerification` + `reloadEmailVerification` 메서드
+    - [x] `VerifyEmailDialog` 공통 위젯 — 재발송/인증 완료 체크/나중에 3 액션 + 상태 메시지 UI
+    - [x] 단위 테스트: EmailVerificationCooldown 5건
+    - [x] `flutter analyze` 0 issues + 총 42건 테스트 pass
+  - ⚠️ 남은 작업 (다음 세션 — 러닝 플로우 건드리므로 야간 제약상 보류):
+    - [ ] 러닝 종료 시점(`running_result_page.dart` 저장 직전) 인증 상태 체크 → 미인증이면 로컬 큐잉 + `VerifyEmailDialog.show` 호출
+    - [ ] 크루 가입/리워드 교환/랭킹 등록 등 기능 작동 시 동일 다이얼로그 트리거 (공통 가드 `requireEmailVerified()` 헬퍼 신설)
     - [ ] 로컬 큐잉된 러닝 데이터 — 인증 완료 감지 시 자동 flush (`idTokenChanges` 또는 앱 재시작 시 체크)
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - 파일: `lib/features/auth/domain/entities/user_entity.dart`, `data/models/user_model.dart`, `data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/presentation/widgets/verify_email_dialog.dart` (신규), `lib/core/auth/require_email_verified.dart` (신규), `lib/features/running/presentation/pages/running_result_page.dart`, `lib/features/crew/...`, `lib/features/reward/...`
-  - 예상: 120분
+    - [ ] "러닝 시작 1회까지 허용" 로직 (사용자 상태 머신 설계 필요)
+  - 파일(완료): `lib/features/auth/domain/entities/user_entity.dart`, `data/models/user_model.dart`, `data/datasources/auth_firebase_datasource.dart`, `lib/core/services/email_verification_cooldown.dart` (신규), `presentation/providers/auth_provider.dart`, `presentation/widgets/verify_email_dialog.dart` (신규), `test/core/services/email_verification_cooldown_test.dart` (신규)
 
 - [ ] **[인증] 세션 만료 및 러닝 중 로그아웃 차단 (2026-04-23 정책 확정)**
   - 정책: [POLICY.md § 3](POLICY.md#-3-세션-만료-및-토큰-갱신-정책) — 러닝 중 로그아웃 X, 종료 시점 저장 + 로컬 큐잉

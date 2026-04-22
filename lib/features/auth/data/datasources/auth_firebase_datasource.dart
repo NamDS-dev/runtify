@@ -67,7 +67,12 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
 
       final uid = credential.user!.uid;
 
-      // Firestore에 유저 문서 저장
+      // 인증 메일 자동 발송 — 실패는 계정 생성을 되돌리지 않음 (UX에서 재발송 제공)
+      try {
+        await credential.user?.sendEmailVerification();
+      } catch (_) {}
+
+      // Firestore에 유저 문서 저장 — 이메일 가입은 미인증 상태로 시작
       final newUser = UserModel(
         id: uid,
         name: name,
@@ -76,6 +81,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
         points: 0,
         level: 1,
         totalDistance: 0.0,
+        emailVerified: false,
       );
 
       await _usersRef.doc(uid).set(newUser.toFirestore());
@@ -109,11 +115,13 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
       final uid = userCredential.user!.uid;
 
       // Firestore에 유저 문서가 없으면 신규 생성 (최초 소셜 로그인)
+      // OAuth 가입자는 Google 측에서 이메일이 이미 검증되었으므로 emailVerified: true
       await _createUserIfNotExists(
         uid: uid,
         name: googleUser.displayName ?? '러너',
         email: googleUser.email,
         profileImageUrl: googleUser.photoUrl,
+        emailVerified: true,
       );
 
       return await _getUserFromFirestore(uid);
@@ -152,10 +160,12 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
           : null;
 
       // Firestore에 유저 문서가 없으면 신규 생성
+      // Apple은 ID 토큰 시점에 이메일이 검증된 상태로 제공됨 → emailVerified: true
       await _createUserIfNotExists(
         uid: uid,
         name: name ?? userCredential.user?.displayName ?? '러너',
         email: appleCredential.email ?? userCredential.user?.email ?? '',
+        emailVerified: true,
       );
 
       return await _getUserFromFirestore(uid);
@@ -208,10 +218,63 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
     if (user == null) return null;
 
     try {
-      return await _getUserFromFirestore(user.uid);
+      final firestoreUser = await _getUserFromFirestore(user.uid);
+
+      // Firebase Auth는 이메일 인증 링크 클릭 후 토큰 갱신 시점에 emailVerified=true가 됨.
+      // Firestore 필드가 뒤처져 있으면 즉시 동기화해 이후 호출에서 일관성 확보.
+      if (user.emailVerified && !firestoreUser.emailVerified) {
+        await _usersRef.doc(user.uid).update({'emailVerified': true});
+        return UserModel(
+          id: firestoreUser.id,
+          name: firestoreUser.name,
+          email: firestoreUser.email,
+          profileImageUrl: firestoreUser.profileImageUrl,
+          experience: firestoreUser.experience,
+          points: firestoreUser.points,
+          level: firestoreUser.level,
+          totalDistance: firestoreUser.totalDistance,
+          crewId: firestoreUser.crewId,
+          streak: firestoreUser.streak,
+          lastRunDate: firestoreUser.lastRunDate,
+          homeRegionSi: firestoreUser.homeRegionSi,
+          homeRegionGu: firestoreUser.homeRegionGu,
+          homeRegionDong: firestoreUser.homeRegionDong,
+          emailVerified: true,
+        );
+      }
+      return firestoreUser;
     } catch (e) {
       return null;
     }
+  }
+
+  // 현재 로그인된 사용자에게 이메일 인증 메일을 재발송
+  // 쿨다운은 상위 레이어(AuthNotifier)에서 처리 — 여기서는 순수 호출만 담당
+  Future<void> sendCurrentUserEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('로그인된 사용자가 없습니다');
+    }
+    try {
+      await user.sendEmailVerification();
+    } on FirebaseAuthException catch (e) {
+      throw _convertAuthException(e);
+    }
+  }
+
+  // Firebase Auth의 현재 사용자 인증 상태를 강제 reload 후 Firestore와 동기화
+  // 사용자가 "인증 완료했어요" 버튼을 눌렀을 때 호출해 UI 갱신
+  Future<bool> reloadAndSyncEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    await user.reload();
+    final refreshed = _auth.currentUser;
+    if (refreshed == null) return false;
+    if (refreshed.emailVerified) {
+      await _usersRef.doc(refreshed.uid).update({'emailVerified': true});
+      return true;
+    }
+    return false;
   }
 
   // ── 공통 헬퍼: Firestore에서 유저 정보 조회 ──────────────────────────────
@@ -231,6 +294,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
     required String name,
     required String email,
     String? profileImageUrl,
+    bool emailVerified = false,
   }) async {
     final doc = await _usersRef.doc(uid).get();
     if (doc.exists) return; // 이미 존재하면 스킵
@@ -244,6 +308,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
       points: 0,
       level: 1,
       totalDistance: 0.0,
+      emailVerified: emailVerified,
     );
 
     await _usersRef.doc(uid).set(newUser.toFirestore());

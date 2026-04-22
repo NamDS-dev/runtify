@@ -19,6 +19,11 @@ class UserEntity extends Equatable {
   final String? homeRegionGu;   // 구·군 (예: "강남구")
   final String? homeRegionDong; // 동 (예: "역삼동")
 
+  // ── 이메일 인증 상태 ──────────────────────────────────────────
+  // 정책: [POLICY.md § 1] — 이메일 가입자는 false로 시작, OAuth 가입자는 true
+  // 기존 사용자는 Firestore에 필드가 없어 fromFirestore에서 false 기본값 부여
+  final bool emailVerified;
+
   const UserEntity({
     required this.id,
     required this.name,
@@ -34,6 +39,7 @@ class UserEntity extends Equatable {
     this.homeRegionSi,
     this.homeRegionGu,
     this.homeRegionDong,
+    this.emailVerified = false,
   });
 
   // 다음 레벨까지 필요한 경험치 (레벨 * 100)
@@ -67,5 +73,17 @@ class UserEntity extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, email, experience, points, level, streak, homeRegionSi, homeRegionGu, homeRegionDong];
+  List<Object?> get props => [
+        id,
+        name,
+        email,
+        experience,
+        points,
+        level,
+        streak,
+        homeRegionSi,
+        homeRegionGu,
+        homeRegionDong,
+        emailVerified,
+      ];
 }

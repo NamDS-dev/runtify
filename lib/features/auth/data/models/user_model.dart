@@ -17,6 +17,7 @@ class UserModel extends UserEntity {
     super.homeRegionSi,
     super.homeRegionGu,
     super.homeRegionDong,
+    super.emailVerified,
   });
 
   // Firestore 문서에서 UserModel 생성
@@ -49,6 +50,8 @@ class UserModel extends UserEntity {
       homeRegionSi: data['homeRegionSi'] as String?,
       homeRegionGu: data['homeRegionGu'] as String?,
       homeRegionDong: data['homeRegionDong'] as String?,
+      // 기존 사용자는 필드 부재 → false (미인증)로 취급하고 UI에서 재발송 유도
+      emailVerified: data['emailVerified'] == true,
     );
   }
 
@@ -69,6 +72,8 @@ class UserModel extends UserEntity {
       'homeRegionSi': homeRegionSi,
       'homeRegionGu': homeRegionGu,
       'homeRegionDong': homeRegionDong,
+      // 이메일 인증 상태 (Phase 7: 정책 § 1)
+      'emailVerified': emailVerified,
     };
   }
 }
