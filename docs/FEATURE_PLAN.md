@@ -27,16 +27,13 @@
   - 파일: `lib/core/router/app_router.dart`, `lib/features/profile/presentation/pages/onboarding_home_region_page.dart` (신규), `lib/features/auth/presentation/providers/auth_provider.dart`
   - 예상: 50분
 
-- [ ] **[가입 UX] 이메일 회원가입 약관·개인정보 동의 체크박스 (2026-04-24 정책 확정)**
-  - 정책: 이메일 회원가입 시 **체크박스 2개 필수** (이용약관 / 개인정보처리방침). 소셜 로그인은 탭 행위를 동의로 간주(현재 유지)
-  - 구현 체크리스트:
-    - [ ] `login_page.dart` 회원가입 모드에서만 체크박스 2개 표시 (이용약관 동의 [필수] / 개인정보 동의 [필수])
-    - [ ] 둘 다 체크 안 되면 가입 버튼 비활성화
-    - [ ] 각 항목 옆 "자세히 보기" 링크 → 각각 약관/개인정보 전문 페이지 (이미 `docs/PRIVACY_POLICY.md` 존재, 앱 내 페이지로 렌더)
-    - [ ] 약관 전문 Flutter 페이지 신설 (`terms_of_service_page.dart`, `privacy_policy_page.dart`) — `docs/PRIVACY_POLICY.md` 내용 재활용
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/legal/presentation/pages/terms_of_service_page.dart` (신규), `lib/features/legal/presentation/pages/privacy_policy_page.dart` (신규)
-  - 예상: 70분
+- [x] ✅ **[가입 UX] 이메일 회원가입 약관·개인정보 동의 체크박스 (2026-04-24 구현 완료)**
+  - 구현: `login_page.dart` 회원가입 모드에만 체크박스 2개 노출 — `_buildConsentRow` 헬퍼(체크박스 + 라벨 + "자세히 보기"). 둘 다 체크 안 되면 회원가입 버튼 `onPressed: null` 비활성
+  - 법적 전문 페이지: `TermsOfServicePage`(MVP 간이 약관 8조), `PrivacyPolicyPage`(docs/PRIVACY_POLICY.md 전문 그대로 임베드). go_router에 `/legal/terms`·`/legal/privacy` 라우트 추가
+  - "자세히 보기" 탭 시 `context.push` 로 전환 → 뒤로가기로 가입 폼 복귀(체크 상태 유지)
+  - 소셜 로그인은 탭 행위를 동의로 간주(현재 유지, UI 변경 없음)
+  - 검증: `flutter analyze` 0 issues + `flutter test` 43건 pass
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/legal/presentation/pages/terms_of_service_page.dart` (신규), `lib/features/legal/presentation/pages/privacy_policy_page.dart` (신규), `lib/core/router/app_router.dart`
 
 - [x] ✅ **[가입 UX] OAuth 가입자 닉네임 처리 (2026-04-24 결정, 추가 작업 없음)**
   - 결정: Google displayName 그대로 사용, 가입 직후 닉네임 입력 화면 없음

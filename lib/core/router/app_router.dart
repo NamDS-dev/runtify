@@ -14,6 +14,8 @@ import '../../features/crew/presentation/pages/crew_create_page.dart';
 import '../../features/crew/presentation/pages/crew_detail_page.dart';
 import '../../features/course/presentation/pages/course_detail_page.dart';
 import '../../features/course/presentation/pages/course_list_page.dart';
+import '../../features/legal/presentation/pages/privacy_policy_page.dart';
+import '../../features/legal/presentation/pages/terms_of_service_page.dart';
 import '../../features/onboarding/presentation/pages/ble_onboarding_page.dart';
 import '../../features/onboarding/presentation/pages/health_connect_onboarding_page.dart';
 import '../../features/crew/presentation/pages/crew_page.dart';
@@ -219,6 +221,22 @@ final appRouter = GoRouter(
         child: const BleOnboardingPage(),
       ),
     ),
+    // ── 법적 고지 (이용약관/개인정보 처리방침) ─────────────────────
+    GoRoute(
+      path: '/legal/terms',
+      pageBuilder: (context, state) => _platformPage(
+        key: state.pageKey,
+        child: const TermsOfServicePage(),
+      ),
+    ),
+    GoRoute(
+      path: '/legal/privacy',
+      pageBuilder: (context, state) => _platformPage(
+        key: state.pageKey,
+        child: const PrivacyPolicyPage(),
+      ),
+    ),
+
     // ── 코스 관련 (Phase 8) ─────────────────────────────────────────
     GoRoute(
       path: '/courses',

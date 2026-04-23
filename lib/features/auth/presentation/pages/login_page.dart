@@ -29,6 +29,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  // 이메일 회원가입 시 필수 동의 체크박스 (소셜 로그인은 탭 행위로 간주, 해당 없음)
+  bool _agreedToTerms = false;
+  bool _agreedToPrivacy = false;
+
   @override
   void initState() {
     super.initState();
@@ -183,12 +187,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       return null;
                     },
                   ),
+
+                  // 약관·개인정보 동의 체크박스 (이메일 가입 한정 필수)
+                  const SizedBox(height: 12),
+                  _buildConsentRow(
+                    checked: _agreedToTerms,
+                    onChanged: (v) =>
+                        setState(() => _agreedToTerms = v ?? false),
+                    label: '[필수] 이용약관 동의',
+                    detailRoutePath: '/legal/terms',
+                  ),
+                  _buildConsentRow(
+                    checked: _agreedToPrivacy,
+                    onChanged: (v) =>
+                        setState(() => _agreedToPrivacy = v ?? false),
+                    label: '[필수] 개인정보 처리방침 동의',
+                    detailRoutePath: '/legal/privacy',
+                  ),
                 ],
                 const SizedBox(height: 32),
 
-                // 로그인/회원가입 버튼
+                // 로그인/회원가입 버튼 — 회원가입 모드에서 두 약관 모두 동의 시에만 활성
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
+                  onPressed: (_isLoading ||
+                          (_isSignUpMode &&
+                              !(_agreedToTerms && _agreedToPrivacy)))
+                      ? null
+                      : _submit,
                   child: _isLoading
                       ? const SizedBox(
                           height: 20,
@@ -243,6 +268,58 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetCtx) => _ForgotPasswordSheet(initialEmail: seededEmail),
+    );
+  }
+
+  // 이메일 회원가입 필수 동의 체크박스 1줄 — 체크박스 + 라벨 + "자세히 보기" 링크
+  Widget _buildConsentRow({
+    required bool checked,
+    required ValueChanged<bool?> onChanged,
+    required String label,
+    required String detailRoutePath,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: checked,
+            onChanged: onChanged,
+            activeColor: AppTheme.primary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => onChanged(!checked),
+            behavior: HitTestBehavior.opaque,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: context.colors.textPrimary,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: () => context.push(detailRoutePath),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: const Size(0, 32),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Text(
+            '자세히 보기',
+            style: TextStyle(
+              color: context.colors.textSecondary,
+              fontSize: 12,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

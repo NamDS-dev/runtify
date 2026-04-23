@@ -1,0 +1,73 @@
+import 'package:flutter/material.dart';
+
+// 개인정보 처리방침 페이지
+// 마스터 문서: docs/PRIVACY_POLICY.md
+// 향후 문서 갱신 시 이 파일의 `_body` 상수도 동기화 필요
+class PrivacyPolicyPage extends StatelessWidget {
+  const PrivacyPolicyPage({super.key});
+
+  static const String _body = '''
+# Runtify 개인정보 처리방침
+
+**최종 수정일:** 2026년 4월 12일
+
+## 1. 수집하는 개인정보
+
+Runtify는 서비스 제공을 위해 다음 정보를 수집합니다:
+
+### 필수 정보
+- **계정 정보**: 이메일 주소, 닉네임
+- **러닝 데이터**: GPS 위치, 거리, 시간, 페이스
+
+### 선택 정보 (동의 시)
+- **건강 데이터**: 심박수, 칼로리 (Health Connect 연동 시)
+- **위치 정보**: 러닝 경로 GPS 좌표
+
+## 2. 개인정보 이용 목적
+
+- 러닝 기록 저장 및 통계 제공
+- 크루 활동 및 랭킹 서비스
+- 포인트/배지 시스템 운영
+
+## 3. 개인정보 보유 기간
+
+- 회원 탈퇴 시 즉시 삭제
+- 러닝 기록: 회원 탈퇴 시 삭제
+
+## 4. 개인정보 제3자 제공
+
+Runtify는 사용자의 개인정보를 제3자에게 제공하지 않습니다.
+
+## 5. 데이터 저장
+
+- 데이터는 Google Firebase (Cloud Firestore)에 암호화되어 저장됩니다.
+- 건강 데이터(심박수 등)는 기기 내 Health Connect에만 저장되며, 외부 서버로 전송되지 않습니다.
+
+## 6. 사용자 권리
+
+- 계정 삭제 요청: 앱 내 프로필 → 회원 탈퇴
+- 데이터 열람/수정: 앱 내 설정에서 가능
+- 문의: runtify.dev@gmail.com
+
+## 7. 문의처
+
+- 이메일: runtify.dev@gmail.com
+- 서비스명: Runtify
+''';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('개인정보 처리방침')),
+      body: const SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            _body,
+            style: TextStyle(fontSize: 14, height: 1.6),
+          ),
+        ),
+      ),
+    );
+  }
+}
