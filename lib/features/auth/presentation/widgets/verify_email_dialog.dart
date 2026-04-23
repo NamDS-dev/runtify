@@ -46,10 +46,10 @@ class _VerifyEmailDialogState extends ConsumerState<VerifyEmailDialog> {
       _statusMessage = null;
     });
 
-    final cooldown = ref.read(emailVerificationCooldownProvider);
+    final rateLimiter = ref.read(emailVerificationRateLimiterProvider);
     final error = await ref
         .read(authProvider.notifier)
-        .resendEmailVerification(cooldown: cooldown);
+        .resendEmailVerification(rateLimiter: rateLimiter);
 
     if (!mounted) return;
     setState(() {

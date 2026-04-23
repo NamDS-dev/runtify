@@ -15,6 +15,34 @@
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
 
+- [ ] **[가입 UX] 가입 직후 홈 지역 설정 강제 온보딩 (2026-04-24 정책 확정)**
+  - 정책: 신규 가입자는 홈 지역 설정 후 홈으로 진입. 랭킹 정확도를 위해 필수
+  - 구현 체크리스트:
+    - [ ] `AuthNotifier` 로그인 성공 후 `homeRegionSi`가 null인 사용자 감지
+    - [ ] `app_router.dart` redirect 로직에 신규 라우트 `/onboarding/home-region` 추가 — 홈 지역 미설정 시 홈 대신 여기로 전송
+    - [ ] 기존 `ProfileRegionBottomSheet`(Figma `257:2`) 로직을 전체화면 온보딩 화면으로 재사용 가능하도록 위젯 분리
+    - [ ] 건너뛰기 버튼 제공 but 강한 안내 ("설정 안 하면 내 지역 랭킹 반영 안 됩니다")
+    - [ ] OAuth 가입자도 동일 플로우
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/core/router/app_router.dart`, `lib/features/profile/presentation/pages/onboarding_home_region_page.dart` (신규), `lib/features/auth/presentation/providers/auth_provider.dart`
+  - 예상: 50분
+
+- [ ] **[가입 UX] 이메일 회원가입 약관·개인정보 동의 체크박스 (2026-04-24 정책 확정)**
+  - 정책: 이메일 회원가입 시 **체크박스 2개 필수** (이용약관 / 개인정보처리방침). 소셜 로그인은 탭 행위를 동의로 간주(현재 유지)
+  - 구현 체크리스트:
+    - [ ] `login_page.dart` 회원가입 모드에서만 체크박스 2개 표시 (이용약관 동의 [필수] / 개인정보 동의 [필수])
+    - [ ] 둘 다 체크 안 되면 가입 버튼 비활성화
+    - [ ] 각 항목 옆 "자세히 보기" 링크 → 각각 약관/개인정보 전문 페이지 (이미 `docs/PRIVACY_POLICY.md` 존재, 앱 내 페이지로 렌더)
+    - [ ] 약관 전문 Flutter 페이지 신설 (`terms_of_service_page.dart`, `privacy_policy_page.dart`) — `docs/PRIVACY_POLICY.md` 내용 재활용
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/legal/presentation/pages/terms_of_service_page.dart` (신규), `lib/features/legal/presentation/pages/privacy_policy_page.dart` (신규)
+  - 예상: 70분
+
+- [x] ✅ **[가입 UX] OAuth 가입자 닉네임 처리 (2026-04-24 결정, 추가 작업 없음)**
+  - 결정: Google displayName 그대로 사용, 가입 직후 닉네임 입력 화면 없음
+  - 현재 구현: `auth_firebase_datasource.dart` `_createUserIfNotExists(name: googleUser.displayName ?? '러너')` 이미 동작
+  - 사용자는 Profile에서 언제든 닉네임 수정 가능
+
 - [ ] **[인증] 이메일 인증 플로우 — 스캐폴딩 완료 / 기능 가드 통합 남음 (2026-04-23 부분 구현)**
   - 정책: [POLICY.md § 1](POLICY.md#-1-이메일-인증verification-정책) — 러닝 1회 유예 + 기능 작동 시 인증 유도
   - ✅ 야간 완료 (2026-04-23):
@@ -29,6 +57,13 @@
     - [x] 단위 테스트: EmailVerificationCooldown 5건
     - [x] `flutter analyze` 0 issues + 총 42건 테스트 pass
   - ⚠️ 남은 작업 (다음 세션 — 러닝 플로우 건드리므로 야간 제약상 보류):
+    - [x] ✅ **재발송 쿨다운 로직 교체 — 슬라이딩 윈도우 5분/3회 (2026-04-24 구현 완료)**
+      - `email_verification_cooldown.dart` → `email_verification_rate_limiter.dart` 리네이밍, 클래스/provider/AuthNotifier 시그니처 일괄 갱신
+      - SharedPreferences에 타임스탬프 ms 3개를 ',' 구분 단일 문자열로 저장 (uid별 키), 읽기 시점에 윈도우 밖 항목 자연 청소
+      - 3개 슬롯이 모두 윈도우 내면 잠금, 남은 시간은 "가장 오래된 발송 + 5분 - now"
+      - 에러 메시지는 남은 시간 1분↑이면 분 단위, 미만이면 초 단위 안내
+      - 단위 테스트 6건 재작성 (최초/1~2회/3회 잠금/오래된 슬롯 만료 후 즉시 재잠금/독립 uid/전체 윈도우 경과)
+      - 검증: `flutter analyze` 0 issues + 총 43건 pass
     - [ ] 러닝 종료 시점(`running_result_page.dart` 저장 직전) 인증 상태 체크 → 미인증이면 로컬 큐잉 + `VerifyEmailDialog.show` 호출
     - [ ] 크루 가입/리워드 교환/랭킹 등록 등 기능 작동 시 동일 다이얼로그 트리거 (공통 가드 `requireEmailVerified()` 헬퍼 신설)
     - [ ] 로컬 큐잉된 러닝 데이터 — 인증 완료 감지 시 자동 flush (`idTokenChanges` 또는 앱 재시작 시 체크)

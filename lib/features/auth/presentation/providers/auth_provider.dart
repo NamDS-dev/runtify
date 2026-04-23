@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../../../core/services/email_verification_cooldown.dart';
+import '../../../../core/services/email_verification_rate_limiter.dart';
 import '../../../../core/services/login_rate_limiter.dart';
 import '../../data/datasources/auth_firebase_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -47,9 +47,9 @@ final forgotPasswordUseCaseProvider = Provider((ref) {
 // 로그인 실패 레이트 리밋 (Phase 1: 로컬만)
 final loginRateLimiterProvider = Provider((ref) => LoginRateLimiter());
 
-// 이메일 인증 재발송 쿨다운 (60초)
-final emailVerificationCooldownProvider =
-    Provider((ref) => EmailVerificationCooldown());
+// 이메일 인증 재발송 레이트 리밋 (슬라이딩 윈도우: 5분/3회)
+final emailVerificationRateLimiterProvider =
+    Provider((ref) => EmailVerificationRateLimiter());
 
 // 현재 로그인된 유저 상태
 class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
@@ -180,16 +180,20 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
   // 현재 로그인된 사용자에게 이메일 인증 메일 재발송
   // 반환: null = 발송됨, String = 에러 메시지(쿨다운/네트워크 등)
   Future<String?> resendEmailVerification({
-    required EmailVerificationCooldown cooldown,
+    required EmailVerificationRateLimiter rateLimiter,
   }) async {
     final user = state.valueOrNull;
     if (user == null) {
       return '로그인 상태를 확인해주세요';
     }
 
-    final remaining = await cooldown.remaining(user.id);
+    final remaining = await rateLimiter.remaining(user.id);
     if (remaining != null) {
-      return '${remaining.inSeconds}초 후 다시 시도해주세요';
+      // 남은 시간이 1분 이상이면 분 단위, 그 미만이면 초 단위로 안내
+      final msg = remaining.inMinutes >= 1
+          ? '재발송 한도에 도달했습니다. ${remaining.inMinutes + 1}분 후 다시 시도해주세요'
+          : '${remaining.inSeconds}초 후 다시 시도해주세요';
+      return msg;
     }
 
     try {
@@ -198,11 +202,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
       final impl = _dataSource;
       if (impl is AuthFirebaseDataSource) {
         await impl.sendCurrentUserEmailVerification();
-        await cooldown.markSent(user.id);
+        await rateLimiter.markSent(user.id);
         return null;
       }
       // 데모 모드는 no-op 성공 처리
-      await cooldown.markSent(user.id);
+      await rateLimiter.markSent(user.id);
       return null;
     } catch (e) {
       return e.toString().replaceFirst('Exception: ', '');
