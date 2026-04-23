@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../../core/router/auth_router_state.dart';
 import '../../../../core/services/email_verification_rate_limiter.dart';
 import '../../../../core/services/login_rate_limiter.dart';
 import '../../data/datasources/auth_firebase_datasource.dart';
@@ -71,6 +72,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
         _forgotPasswordUseCase = forgotPasswordUseCase,
         _rateLimiter = rateLimiter,
         super(const AsyncValue.loading()) {
+    // 상태가 바뀔 때마다 GoRouter redirect 가 감지할 수 있도록 notifier 갱신
+    addListener((next) {
+      authRouterStateNotifier.value = next.valueOrNull;
+    });
     _checkCurrentUser();
   }
 

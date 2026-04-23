@@ -15,17 +15,15 @@
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
 
-- [ ] **[가입 UX] 가입 직후 홈 지역 설정 강제 온보딩 (2026-04-24 정책 확정)**
-  - 정책: 신규 가입자는 홈 지역 설정 후 홈으로 진입. 랭킹 정확도를 위해 필수
-  - 구현 체크리스트:
-    - [ ] `AuthNotifier` 로그인 성공 후 `homeRegionSi`가 null인 사용자 감지
-    - [ ] `app_router.dart` redirect 로직에 신규 라우트 `/onboarding/home-region` 추가 — 홈 지역 미설정 시 홈 대신 여기로 전송
-    - [ ] 기존 `ProfileRegionBottomSheet`(Figma `257:2`) 로직을 전체화면 온보딩 화면으로 재사용 가능하도록 위젯 분리
-    - [ ] 건너뛰기 버튼 제공 but 강한 안내 ("설정 안 하면 내 지역 랭킹 반영 안 됩니다")
-    - [ ] OAuth 가입자도 동일 플로우
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - 파일: `lib/core/router/app_router.dart`, `lib/features/profile/presentation/pages/onboarding_home_region_page.dart` (신규), `lib/features/auth/presentation/providers/auth_provider.dart`
-  - 예상: 50분
+- [x] ✅ **[가입 UX] 가입 직후 홈 지역 설정 강제 온보딩 (2026-04-24 구현 완료)**
+  - 구현: `/onboarding/home-region` 전체화면 페이지 신설 — GPS 감지 버튼 + 강한 안내 + "건너뛰기"(확인 다이얼로그 후 세션 스킵 플래그)
+  - 기존 `detectCurrentRegionProvider` + `saveHomeRegionProvider` 재활용 (BottomSheet 분리 없이 Page에서 직접 호출)
+  - `auth_router_state.dart` 신설 — `ValueNotifier<UserEntity?>` 싱글톤. `AuthNotifier.addListener` 로 상태 동기화
+  - `appRouter`에 `refreshListenable` + `redirect` 추가 — 로그인된 사용자가 homeRegionSi 미설정이고 스킵 안 했을 때 `/onboarding/home-region` 으로 강제. 로그인/법적/온보딩 경로는 예외
+  - OAuth 가입자도 동일 플로우 (homeRegion 미설정 동일 조건)
+  - 세션 스킵 플래그는 앱 재시작 시 초기화 → 다음 실행에서 다시 온보딩 유도(의도된 동작)
+  - 검증: `flutter analyze` 0 issues + `flutter test` 43건 pass
+  - 파일: `lib/core/router/app_router.dart`, `lib/core/router/auth_router_state.dart` (신규), `lib/features/auth/presentation/pages/onboarding_home_region_page.dart` (신규), `lib/features/auth/presentation/providers/auth_provider.dart`
 
 - [x] ✅ **[가입 UX] 이메일 회원가입 약관·개인정보 동의 체크박스 (2026-04-24 구현 완료)**
   - 구현: `login_page.dart` 회원가입 모드에만 체크박스 2개 노출 — `_buildConsentRow` 헬퍼(체크박스 + 라벨 + "자세히 보기"). 둘 다 체크 안 되면 회원가입 버튼 `onPressed: null` 비활성

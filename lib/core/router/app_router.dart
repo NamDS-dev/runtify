@@ -4,7 +4,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'auth_router_state.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/onboarding_home_region_page.dart';
 import '../../features/auth/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/pages/social_login_page.dart';
 import '../../features/crew/presentation/pages/crew_challenge_page.dart';
@@ -45,6 +47,26 @@ Page<dynamic> _platformPage({required LocalKey key, required Widget child}) {
 // ShellRoute 밖: 로그인, 러닝 트래킹, 서브 화면 (BottomNav 없음)
 final appRouter = GoRouter(
   initialLocation: '/home',
+  refreshListenable: authRouterStateNotifier,
+  // 가입 직후 홈 지역 미설정 사용자는 /onboarding/home-region 으로 강제 이동.
+  // 단, 로그인/법적 고지/온보딩 경로는 리다이렉트 제외.
+  redirect: (context, state) {
+    final user = authRouterStateNotifier.value;
+    if (user == null) return null; // 비로그인은 기존 플로우 유지
+
+    final loc = state.matchedLocation;
+    if (loc.startsWith('/login') ||
+        loc.startsWith('/legal') ||
+        loc.startsWith('/onboarding')) {
+      return null;
+    }
+
+    final needs = (user.homeRegionSi == null || user.homeRegionSi!.isEmpty);
+    if (!needs) return null;
+    if (isHomeRegionOnboardingSkipped(user.id)) return null;
+
+    return '/onboarding/home-region';
+  },
   routes: [
     // ── 로그인 플로우 (BottomNav 없음) ─────────────────────────────────────
     GoRoute(
@@ -206,6 +228,15 @@ final appRouter = GoRouter(
         child: const ProfilePage(),
       ),
     ),
+    // ── 온보딩 (홈 지역 강제 설정) ──────────────────────────────────
+    GoRoute(
+      path: '/onboarding/home-region',
+      pageBuilder: (context, state) => _platformPage(
+        key: state.pageKey,
+        child: const OnboardingHomeRegionPage(),
+      ),
+    ),
+
     // ── 온보딩 (Health Connect) ────────────────────────────────────
     GoRoute(
       path: '/onboarding/health',
