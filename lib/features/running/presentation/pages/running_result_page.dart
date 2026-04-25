@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import '../../../../core/auth/require_email_verified.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/running_session_model.dart';
@@ -334,8 +335,18 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
   }
 
   // 지역 선택 콜백 — 선택한 구로 rankingRegion 업데이트 후 세션 저장
+  // 인증 가드: 미인증 사용자가 랭킹 기여 지역까지 확정하려고 하면 인증 다이얼로그 노출
+  // (단, 메인 saveSession 은 running_page.dart 에서 이미 수행됨 — 이 메서드는 region 만 갱신)
   Future<void> _onRegionSelected(String selectedGu) async {
     if (_isSavingConfirm) return;
+
+    // 랭킹 기여 지역 확정은 인증 필수 기능 — 미인증이면 차단
+    final allowed = await requireEmailVerified(
+      context,
+      ref,
+      contextMessage: '랭킹 기여 지역을 확정하려면',
+    );
+    if (!allowed || !mounted) return;
 
     setState(() {
       _confirmedGu = selectedGu;

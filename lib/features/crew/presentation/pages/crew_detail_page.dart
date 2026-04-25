@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/auth/require_email_verified.dart';
 import '../../../../core/constants/korea_regions.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/content_validator.dart';
@@ -752,6 +753,14 @@ class _ActionButton extends StatelessWidget {
 
   // 가입 신청
   Future<void> _requestJoinCrew(BuildContext context) async {
+    // 인증 가드 — 미인증이면 다이얼로그 호출. 인증 완료/이미 인증 시에만 진행.
+    final allowed = await requireEmailVerified(
+      context,
+      ref,
+      contextMessage: '크루에 가입하려면',
+    );
+    if (!allowed || !context.mounted) return;
+
     try {
       final datasource = ref.read(crewDataSourceProvider);
       // 유저 이름 가져오기

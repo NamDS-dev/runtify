@@ -51,7 +51,7 @@
     - [x] `VerifyEmailDialog` 공통 위젯 — 재발송/인증 완료 체크/나중에 3 액션 + 상태 메시지 UI
     - [x] 단위 테스트: EmailVerificationCooldown 5건
     - [x] `flutter analyze` 0 issues + 총 42건 테스트 pass
-  - ⚠️ 남은 작업 (다음 세션 — 러닝 플로우 건드리므로 야간 제약상 보류):
+  - ⚠️ 남은 작업 (2026-04-26 정책 확정 → 야간 큐 진입 가능):
     - [x] ✅ **재발송 쿨다운 로직 교체 — 슬라이딩 윈도우 5분/3회 (2026-04-24 구현 완료)**
       - `email_verification_cooldown.dart` → `email_verification_rate_limiter.dart` 리네이밍, 클래스/provider/AuthNotifier 시그니처 일괄 갱신
       - SharedPreferences에 타임스탬프 ms 3개를 ',' 구분 단일 문자열로 저장 (uid별 키), 읽기 시점에 윈도우 밖 항목 자연 청소
@@ -59,10 +59,21 @@
       - 에러 메시지는 남은 시간 1분↑이면 분 단위, 미만이면 초 단위 안내
       - 단위 테스트 6건 재작성 (최초/1~2회/3회 잠금/오래된 슬롯 만료 후 즉시 재잠금/독립 uid/전체 윈도우 경과)
       - 검증: `flutter analyze` 0 issues + 총 43건 pass
-    - [ ] 러닝 종료 시점(`running_result_page.dart` 저장 직전) 인증 상태 체크 → 미인증이면 로컬 큐잉 + `VerifyEmailDialog.show` 호출
-    - [ ] 크루 가입/리워드 교환/랭킹 등록 등 기능 작동 시 동일 다이얼로그 트리거 (공통 가드 `requireEmailVerified()` 헬퍼 신설)
-    - [ ] 로컬 큐잉된 러닝 데이터 — 인증 완료 감지 시 자동 flush (`idTokenChanges` 또는 앱 재시작 시 체크)
-    - [ ] "러닝 시작 1회까지 허용" 로직 (사용자 상태 머신 설계 필요)
+    - [x] ✅ **공통 가드 헬퍼 `requireEmailVerified(BuildContext, ref)` 신설 (2026-04-26 구현 완료)**
+      - `lib/core/auth/require_email_verified.dart` — 인증됨/비로그인 분기 즉시 반환, 미인증은 `VerifyEmailDialog.show` 후 결과 반환
+      - 단위 테스트 2건 (위젯 테스트 — 인증된 사용자/비로그인 분기). `flutter test` 45건 pass
+    - [x] ✅ **크루 가입 신청 가드 적용 (2026-04-26 구현 완료)**
+      - `crew_detail_page.dart` `_requestJoinCrew` 진입 시 `requireEmailVerified(contextMessage: '크루에 가입하려면')` 체크 — 차단 시 다이얼로그 노출 후 신청 중단
+    - [x] ✅ **러닝 결과 — 랭킹 기여 지역 확정 가드 (2026-04-26 구현 완료)**
+      - `running_result_page.dart` `_onRegionSelected` 진입 시 `requireEmailVerified(contextMessage: '랭킹 기여 지역을 확정하려면')`
+    - [ ] ⚠️ **러닝 트래킹 페이지 메인 saveSession 가드** — 야간 제약상 보류 (실기기 검증 필요)
+      - `lib/features/running/presentation/pages/running_page.dart` `_stopRun` 의 `dataSource.saveSession(savedSession)` 호출이 GPS/위치 라이프사이클이 활발한 영역에 위치 → 야간 자동 수정 금지
+      - 다음 세션(데스크톱+실기기)에서 `requireEmailVerified` + 로컬 큐 enqueue 적용 필요
+      - 동일하게 `home_page.dart` Health Connect 임포트 saveSession 도 보류
+    - [ ] **크루 게시글 작성 가드** — 호출부 페이지 미존재 (출시 후 기능). 페이지 신설 시 즉시 적용 가능 — 헬퍼는 준비 완료
+    - [ ] **리워드 교환 가드** — 리워드 스토어 미구현. 스토어 구현 시 적용
+    - [ ] **로컬 큐잉된 러닝 데이터 자동 flush** — 러닝 가드와 함께 차기 세션
+    - [ ] **"러닝 시작 1회 유예" 상태 머신** — 차기 세션 (실기기 필요)
   - 파일(완료): `lib/features/auth/domain/entities/user_entity.dart`, `data/models/user_model.dart`, `data/datasources/auth_firebase_datasource.dart`, `lib/core/services/email_verification_cooldown.dart` (신규), `presentation/providers/auth_provider.dart`, `presentation/widgets/verify_email_dialog.dart` (신규), `test/core/services/email_verification_cooldown_test.dart` (신규)
 
 - [ ] **[인증] 세션 만료 및 러닝 중 로그아웃 차단 (2026-04-23 정책 확정)**
@@ -71,10 +82,11 @@
     - [ ] `RunningProvider`에 `isRunningInProgress: bool` getter/state 노출
     - [ ] `AuthNotifier`의 `idTokenChanges()` 리스너에서 `isRunningInProgress == true` 시 로그아웃 트리거 무시 (로그만 찍기)
     - [ ] `running_firestore_datasource.dart`의 `saveSession`이 현재 종료 버튼 1회 저장인지 점검 + 아니면 수정 (중간 저장 제거)
-    - [ ] 저장 실패 시 로컬 큐(`SharedPreferences` 또는 Hive — 선택) 보관
+    - [ ] 저장 실패 시 로컬 큐 보관 — **`SharedPreferences` + JSON 직렬화 확정** (2026-04-26 결정). 큐 키 `running_sync_queue_v1`, 배열 형태 (각 항목: 세션 JSON + 시도 횟수 + 마지막 시도 시각)
     - [ ] 앱 재시작 또는 온라인 복귀 시 큐 자동 flush (`ConnectivityPlus` 스트림 구독)
     - [ ] 홈 상단에 "동기화 대기 N건" 배너 — 큐가 비어있지 않을 때만 표시
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과 (큐 flush 단위 테스트 포함)
+    - [ ] **이메일 인증 가드와 동일 큐 공유** — 미인증으로 인한 차단도 같은 큐에 enqueue. flush 시점에 인증 상태 재확인 후 미인증이면 보류 유지
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과 (큐 enqueue/flush/재시도 단위 테스트 포함)
   - 파일: `lib/features/running/presentation/providers/running_provider.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`, `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/core/services/running_sync_queue.dart` (신규)
   - 예상: 60분
 
@@ -625,9 +637,9 @@ Phase 4 (홈 지역 설정 UI) → Phase 5 (랭킹 기여 지역 분리) → Pha
 | 항목 | 상태 | 비고 |
 |------|------|------|
 | iOS 앱 코드 | ✅ 완료 | Flutter 크로스 플랫폼 |
-| Apple Developer 등록 | ⬜ 필요 | $99/년, developer.apple.com |
-| Apple 로그인 활성화 | ⬜ 필요 | 소셜 로그인 제공 시 필수 (App Store 정책) |
-| App Store 심사 | ⬜ 필요 | 회원 탈퇴 기능 등 심사 요구사항 확인 |
+| Apple Developer 등록 | ⬜ **Android 출시 1개월 전** (2026-04-26 결정) | $99/년, developer.apple.com. 등록 후 Apple 로그인 + 심사 준비 시작 |
+| Apple 로그인 활성화 | ⬜ Apple Developer 등록 후 | 소셜 로그인 제공 시 필수 (App Store 정책) |
+| App Store 심사 | ⬜ 필요 | 회원 탈퇴 기능 등 심사 요구사항 확인 (계정 탈퇴는 30일 소프트 삭제로 정책 확정) |
 
 #### iOS 실기기 테스트 이슈 (2026-04-19 발견)
 - [x] ✅ **iPhone 17 Pro Max 화면 비율 대응** (2026-04-19 수정 완료, 시뮬레이터 검증)
