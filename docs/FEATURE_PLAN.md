@@ -15,6 +15,99 @@
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
 
+- [ ] **[입력 검증] 닉네임 규칙 강화 — 욕설·중복·사칭·이모지·grapheme (2026-04-27 추가)**
+  - 현재: `NameValidator`는 길이 2~20자 + 제어 문자 차단만. 추가 보호 규칙 필요
+  - 정책 (한 번에 모두 적용):
+    1. **욕설/비속어 필터** — `assets/badwords_ko.json` 자체 사전(핵심 50~100단어) 기반. 대소문자 무관, 공백/특수문자 제거 후 매칭
+    2. **닉네임 중복 검사** — Firestore `users` 컬렉션에 `nameNormalized: string` 필드 추가, `where('nameNormalized', '==', normalize(input))` 쿼리. 트랜잭션으로 동시성 보장
+    3. **운영진 이름 사칭 차단** — `assets/reserved_names.json`에 하드코딩 리스트 (관리자, 운영자, admin, 운영팀, runtify, runtify팀, anthropic, claude, 공지사항, 고객센터, system, 시스템 등). 정규화 후 부분 매치 차단
+    4. **숫자만 닉네임 차단** — `^\d+$` 정규식 매치 시 거부 ("닉네임에 글자를 포함해주세요")
+    5. **이모지만 닉네임 차단** — 모든 grapheme이 이모지면 거부 ("닉네임에 텍스트를 포함해주세요"). `characters` 패키지의 `Characters` 사용
+    6. **이모지 grapheme 카운트 정확화** — `value.length` 대신 `value.characters.length`로 측정 (🔥를 1자로 셈)
+  - 구현 체크리스트:
+    - [ ] `assets/badwords_ko.json` 신규 (50~100단어 리스트, 추후 운영 중 보강)
+    - [ ] `assets/reserved_names.json` 신규 (운영진 사칭 단어 리스트)
+    - [ ] `pubspec.yaml`에 두 에셋 등록
+    - [ ] `NameValidator.validate`에 5개 추가 규칙 통합 + grapheme 길이 측정으로 변경
+    - [ ] `NameValidator.containsBadword(input)` / `isReserved(input)` 정적 메서드 분리 (테스트 편의)
+    - [ ] Firestore 중복 쿼리는 별도 클래스로 분리 (`NicknameAvailability` 서비스, 비동기) — `NameValidator`는 sync 검증, 중복은 별도 단계
+    - [ ] `signUpWithEmail` 흐름: 폼 sync 검증 → 비동기 중복 검사 → Firebase 가입. 가입 직후 `nameNormalized` 필드도 같이 저장
+    - [ ] 기존 사용자 마이그레이션: `users` 컬렉션에 `nameNormalized` 누락 문서가 있을 수 있으므로 `getCurrentUser` 시 backfill (현재 name → nameNormalized) 한번 동기화
+    - [ ] 단위 테스트:
+      - [ ] 욕설 포함 차단 (3건+)
+      - [ ] 운영진 이름 차단 (관리자/admin/runtify팀 등 4건+)
+      - [ ] 숫자만 차단 ("12345")
+      - [ ] 이모지만 차단 ("🔥🔥")
+      - [ ] grapheme 길이 — "🔥" 1자로 카운트 (기존 `length`는 2)
+      - [ ] grapheme 길이 — "abc🔥def" 7자로 카운트
+      - [ ] 정상 케이스 (한글+이모지 조합 "러너🔥") 통과
+  - 파일: `lib/core/validators/name_validator.dart`, `lib/core/services/nickname_availability.dart` (신규), `assets/badwords_ko.json` (신규), `assets/reserved_names.json` (신규), `pubspec.yaml`, `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/data/models/user_model.dart`, `test/core/validators/name_validator_test.dart` (확장), `test/core/services/nickname_availability_test.dart` (신규)
+  - 예상: 100분
+  - **⚠️ 주의**: Firestore 중복 쿼리에 인덱스 자동 생성 필요할 수 있음. 야간 PM은 `firestore.indexes.json` 변경 금지 → 인덱스 필요 시 사용자 직접 작업으로 분리 (Firebase Console에서 자동 생성 링크 클릭). 이미 `email` 필터에 인덱스가 있어서 단일 필드 쿼리는 가능할 가능성 높음
+
+- [ ] **[가입 UX] 이메일 인증 Deep Link → 앱 자동 진입 (2026-04-27 추가, 모범사례 갭)**
+  - 현재: 인증 메일 링크 클릭 → Firebase 웹 페이지에서 "verified" 표시. 사용자가 앱 다시 열어 "인증 완료 확인" 버튼 눌러야 반영
+  - 개선: App Links(Android) / Universal Links(iOS) 설정 → 링크 클릭 시 앱 자동 열림 + 자동 reload + 인증 완료 토스트
+  - 구현 체크리스트:
+    - [ ] Firebase Auth Action URL을 커스텀 도메인 또는 App Hosting URL로 설정 (콘솔 작업)
+    - [ ] Android `assetlinks.json` 작성 + 호스팅
+    - [ ] iOS `apple-app-site-association` 작성 + 호스팅 (Universal Links)
+    - [ ] Flutter에서 `uni_links` 또는 `app_links` 패키지로 콜드/웜 진입 처리
+    - [ ] 앱 진입 시 `oobCode` 추출 → `applyActionCode` 호출 → 토스트 + 자동 reload
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - ⚠️ Android `assetlinks.json` 호스팅과 iOS `.well-known` 설정은 사용자 직접 작업 영역 (도메인/호스팅 결정 필요). **야간엔 코드만, 호스팅 단계는 사용자 직접 처리 항목으로 분리**
+  - 파일: `pubspec.yaml`, `lib/core/services/deep_link_handler.dart` (신규), `lib/main.dart`, `android/app/src/main/AndroidManifest.xml`(보류 — 네이티브 편집 금지), `ios/Runner/Info.plist`(보류)
+  - 예상: 60분 (Flutter 측만, 네이티브/호스팅 별도)
+
+- [ ] **[가입 UX] 마케팅 수신 동의 체크박스 분리 (선택 동의) (2026-04-27 추가, 한국 표준)**
+  - 현재: 회원가입 시 필수 동의 2개(서비스 약관 / 개인정보)만. 마케팅 동의 미수집 → 추후 마케팅 푸시·이메일 발송 시 법적 근거 없음
+  - 개선: 회원가입 모드 체크박스에 "[선택] 마케팅 정보 수신 동의" 1개 추가 — 선택이므로 미체크라도 가입 가능
+  - 구현 체크리스트:
+    - [ ] `login_page.dart` `_buildConsentRow`에 선택 항목 1개 추가 (`isRequired: false` 옵션 신설)
+    - [ ] `users/{uid}` 문서에 `marketingConsent: bool` + `marketingConsentAt: timestamp` 필드 추가
+    - [ ] `signUpWithEmail` 시 동의 상태 저장 (이메일 가입자만 — 소셜은 추후 별도 동의 화면)
+    - [ ] Profile 화면에 "마케팅 수신 동의" 토글 추가 (언제든 변경 가능, 변경 시 timestamp 갱신)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/data/models/user_model.dart`, `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/profile/presentation/pages/profile_page.dart`
+  - 예상: 50분
+
+- [ ] **[가입 UX] autofill hints — 비밀번호 매니저 호환 (2026-04-27 추가, 모범사례 갭)**
+  - 현재: `TextFormField`에 `autofillHints` 미지정 → iOS Keychain / 1Password / Google Smart Lock이 폼 인식 못 함. 가입·로그인 시 비번 매니저 자동완성 안 됨
+  - 개선: 폼 필드별 적절한 hints 부여 (`AutofillGroup`으로 묶기)
+  - 구현 체크리스트:
+    - [ ] `login_page.dart` 이메일 필드 → `autofillHints: [AutofillHints.email, AutofillHints.username]`
+    - [ ] 비밀번호 필드 (로그인) → `autofillHints: [AutofillHints.password]`
+    - [ ] 비밀번호 필드 (회원가입) → `autofillHints: [AutofillHints.newPassword]` (비번 매니저가 강한 비번 제안)
+    - [ ] 비밀번호 확인 필드 → `autofillHints: [AutofillHints.newPassword]`
+    - [ ] 닉네임 필드 → `autofillHints: [AutofillHints.name, AutofillHints.nickname]`
+    - [ ] 전체 폼을 `AutofillGroup` 위젯으로 감싸기
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`
+  - 예상: 25분
+
+- [ ] **[가입 UX] 같은 이메일 다른 provider 친절 안내 (2026-04-27 추가, 모범사례 갭)**
+  - 현재: `account-exists-with-different-credential` 에러 발생 시 generic 메시지 "다른 로그인 방식으로 가입된 이메일입니다"만 노출 → 어느 방식으로 가입했는지 모름
+  - 개선: 에러 시 `fetchSignInMethodsForEmail(email)`로 기존 가입 방식 조회 후 안내 ("이 이메일은 Google로 가입돼 있어요. Google로 로그인해주세요")
+  - 구현 체크리스트:
+    - [ ] `signInWith*` 메서드들의 `account-exists-with-different-credential` 핸들러에서 `_auth.fetchSignInMethodsForEmail(email)` 호출
+    - [ ] 반환된 provider list 기준 메시지 분기: `password` / `google.com` / `apple.com` 등
+    - [ ] 사용자 친화 문구로 반환: "이 이메일은 {provider}로 가입돼 있어요. {provider} 로그인을 사용해주세요"
+    - [ ] 단위 테스트: 각 provider별 메시지 정확히 분기되는지 (mock으로 테스트)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `test/features/auth/auth_firebase_datasource_provider_conflict_test.dart` (신규)
+  - 예상: 40분
+
+- [ ] **[가입 UX] Apple "Hide My Email" 가짜 이메일 처리 점검 (2026-04-27 추가, 코드 점검)**
+  - 현재: `signInWithApple`에서 `appleCredential.email` 그대로 저장. Hide My Email 활성 시 `xxxxxx@privaterelay.appleid.com` 같은 임시 이메일이 들어옴
+  - 점검: 현재 로직이 임시 이메일도 정상 처리하는지 + 추후 사용자가 Apple ID 설정에서 Hide My Email 해제했을 때 동기화되는지
+  - 구현 체크리스트:
+    - [ ] `signInWithApple` 흐름 점검 + 임시 이메일 케이스 단위 테스트 추가
+    - [ ] `users/{uid}` 문서에 `appleHiddenEmail: bool` 필드 (`@privaterelay.appleid.com` 도메인 감지) 저장 → 추후 마케팅 발송 시 제외 또는 안내 가능
+    - [ ] 사용자 안내 문구: "Apple Hide My Email로 가입하셔서 마케팅 알림이 도달하지 않을 수 있습니다" (선택)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/data/models/user_model.dart`, `test/features/auth/apple_hide_email_test.dart` (신규)
+  - 예상: 30분
+
 - [x] ✅ **[가입 UX] 가입 직후 홈 지역 설정 강제 온보딩 (2026-04-24 구현 완료)**
   - 구현: `/onboarding/home-region` 전체화면 페이지 신설 — GPS 감지 버튼 + 강한 안내 + "건너뛰기"(확인 다이얼로그 후 세션 스킵 플래그)
   - 기존 `detectCurrentRegionProvider` + `saveHomeRegionProvider` 재활용 (BottomSheet 분리 없이 Page에서 직접 호출)
@@ -621,8 +714,10 @@ Phase 4 (홈 지역 설정 UI) → Phase 5 (랭킹 기여 지역 분리) → Pha
 | Health Connect 온보딩 UI | ⬜ 개발 필요 | 유저에게 Health Connect + 삼성 헬스 동기화 안내 |
 | 워치 러닝 기록 홈 연동 | ⬜ 개발 필요 | Health Connect 과거 데이터 → 홈 대시보드 표시 |
 | BLE 연결 온보딩 UI | ⬜ 개발 필요 | 갤럭시 워치 심박수 페어링 안내 |
-| 🔐 레이트 리밋 Phase 2 (서버) | ⬜ **출시 직전 검토** | Cloud Functions로 이메일별 실패 카운터 → 분산 공격 방어. **Blaze 요금제 전환 필요** ($0~5/월 예상). [POLICY § 2](POLICY.md#-2-로그인-실패-레이트-리밋-정책) 참조 |
-| 🔴 계정 탈퇴 플로우 | ⬜ **출시 직전 필수** | App Store 심사 요건. 정책 결정 후 구현. [POLICY § 4](POLICY.md#-4-계정-탈퇴-정책) |
+| 🔐 레이트 리밋 Phase 2 (서버) | ⬜ **출시 2주 전 (2026-04-26 결정)** | Cloud Functions로 이메일별 실패 카운터 → 분산 공격 방어. **Blaze 요금제 전환 필요** ($0~5/월 예상). [POLICY § 2](POLICY.md#-2-로그인-실패-레이트-리밋-정책) 참조 |
+| 🔴 계정 탈퇴 플로우 | ⬜ **출시 직전 필수** | App Store 심사 요건. 정책 확정됨(2026-04-27). [POLICY § 4](POLICY.md#-4-계정-탈퇴-정책) — 소프트 삭제 30일 + 이중 재인증(비번+이메일 코드) |
+| ⚖️ 약관 변호사 검토 1회 | ⬜ **출시 직전 필수 (2026-04-27 결정)** | 현재 MVP 8조 → 변호사 검토 후 보완. 비용/일정 확보 필요 |
+| 🏢 사업자 정보 채우기 | ⬜ **출시 직전 필수 (2026-04-27 결정)** | 약관·앱 내 사업자 정보(상호/대표자/사업자번호 등) 표시. 사업자 등록 완료 전제 |
 | Play Store 출시 | ⬜ 준비 필요 | 스토어 등록, 스크린샷, 설명 |
 
 #### Android 실기기 테스트 이슈 (2026-04-19 발견)

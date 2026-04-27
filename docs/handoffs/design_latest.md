@@ -1,102 +1,128 @@
 ---
-feature: 소셜 로그인 화면 — 카카오·네이버 버튼 추가 + 순서 재배치
+feature: 회원가입/로그인 신규 UI 4종 — 동기화 배너·회원가입 모드·잠금 상태·VerifyEmailDialog
 status: done
-date: 2026-04-22
+date: 2026-04-27
 ---
 
 ## Figma 프레임
-| 화면 | ID | x | y |
-|------|-----|---|---|
-| 1-NEW. Login (Social) | 118:2 | 0 | 0 |
 
-## 변경 요약
-- 버튼 순서 재배치: **카카오 → 네이버 → Google → Apple** (기존: Apple → Google → 카카오)
-- **네이버 버튼 신규 추가** (308:143 / 308:144)
-- 카카오 버튼 아이콘 교체: 💛 → 💬 (공식 말풍선 로고 암시)
-- 서브타이틀(118:7)을 y=340 → y=310으로 상향 이동해 4버튼 세로 공간 확보
+| 화면 | ID | x | y | 비고 |
+|------|-----|---|---|------|
+| Home (Hub) — 동기화 배너 추가 | 113:307 (수정) | 1060 | 0 | 기존 프레임에 SyncBanner 컴포넌트(417:145~149) 추가 |
+| 1-EXT. Login Email (회원가입 모드) | 417:150 (신규) | 0 | 924 | 닉네임/이메일/비번/비번확인/체크박스 3개/회원가입 버튼 |
+| 1-EXT. Login Email (잠금 상태) | 417:178 (신규) | 430 | 924 | 레이트 리밋 카운트다운 배너 + Disabled 버튼 |
+| Modal — VerifyEmailDialog | 417:191 (신규) | 860 | 924 | 딤 백드롭 + 다이얼로그 카드 + 3 액션 버튼 |
 
-## 레이아웃 좌표 (x, y, w, h)
+---
 
-### 유지되는 상단 영역
-| 요소 | 노드 ID | 위치 | 변경 |
-|------|---------|------|------|
-| Logo BG (ellipse) | 118:3 | (159, 120, 72, 72) | 유지 |
-| Logo Icon 🔥 | 118:4 | (183, 138) | 유지 |
-| App Title "RUNTIFY" | 118:5 | (95, 215) | 유지 |
-| Tagline | 118:6 | (95, 258) | 유지 |
-| Subtitle | 118:7 | (24, 310) | y 340→310 |
+## 1. 동기화 대기 배너 (Home Hub 추가)
 
-### 소셜 버튼 (새 순서, 간격 16px)
-| 순서 | 버튼 | 배경색 | 노드 ID | 위치 (x, y) | 텍스트 |
-|------|------|--------|---------|-------------|--------|
-| 1 | 카카오 | #FEE500 | 118:12 | (24, 360) | 💬  카카오로 계속하기 (#191414) |
-| 2 | **네이버** | **#03C75A** | **308:143** | **(24, 432)** | **N  네이버로 계속하기 (#FFFFFF)** |
-| 3 | Google | #252525 + stroke #666666 | 118:10 | (24, 504) | G  Google로 계속하기 (#FFFFFF) |
-| 4 | Apple | #FFFFFF | 118:8 | (24, 576) | 🍎  Apple로 계속하기 (#0D0D0D) |
+위치: 통계 카드(`Stats Card BG`) 아래 y=510 (홈 본문 영역)
 
-- 공통: width 342, height 56, cornerRadius 14
-- 텍스트: Inter SemiBold 16pt, CENTER, width 342
-
-### iOS 전용 배지 (Apple 버튼 우측 상단)
-| 요소 | 노드 ID | 위치 |
+| 요소 | 노드 ID | 스펙 |
 |------|---------|------|
-| iOS Badge BG | 118:19 | (300, 558, 46, 18) |
-| iOS Badge Text | 118:20 | (300, 560) |
+| Banner BG | 417:145 | 358×52, fill #252525, radius 10 |
+| Icon ⏳ | 417:146 | 22pt |
+| Label "동기화 대기 중인 러닝 기록" | 417:147 | 12pt #9E9E9E |
+| Count "2건 — 인증 후 자동 저장" | 417:148 | 14pt Bold #FF9A3C (Secondary) |
+| CTA "지금 처리 →" | 417:149 | 12pt SemiBold #FF9A3C |
 
-⚠️ iOS 배지가 Google 버튼(y=504~560) 끝부분과 시각적으로 살짝 겹치는 인상이 있지만, 원래 디자인 의도(Apple 버튼 외측 상단에 얹힘) 유지. 거슬리면 Apple 버튼 내측 우측(예: x=310, y=586)으로 이동 가능.
+**조건부 렌더링**: 큐에 항목이 있을 때만 표시. 0건이면 위젯 자체 미렌더.
+**Flutter 구현**: `home_page.dart`에서 `runningSyncQueueProvider.length > 0` 일 때 Card 위젯으로 표시.
 
-### 구분선 & Runtify 로그인 영역
-| 요소 | 노드 ID | 위치 |
-|------|---------|------|
-| Divider Left | 118:14 | (24, 652, 140×1) |
-| Divider Right | 118:15 | (226, 652, 140×1) |
-| Divider Text "또는" | 118:16 | (175, 642) |
-| Runtify Login Button | 118:21 | (24, 672, 342×56) |
-| Runtify Login Button Text | 118:22 | (24, 690) "🔥  Runtify 계정으로 로그인" |
+---
 
-### 약관 (유지)
-| 요소 | 노드 ID | 위치 |
-|------|---------|------|
-| Terms Text | 118:17 | (24, 760) |
-| Terms Links | 118:18 | (24, 786) |
+## 2. 회원가입 모드 신규 프레임 (417:150)
 
-## 컬러 스펙
-- 카카오: 배경 #FEE500, 텍스트 #191414
-- **네이버: 배경 #03C75A, 텍스트 #FFFFFF (네이버 공식 그린)**
-- Google: 배경 #252525, stroke #666666, 텍스트 #FFFFFF
-- Apple: 배경 #FFFFFF, 텍스트 #0D0D0D
-- Runtify: 배경 #1A1A1A, stroke #FF4D00 50%, 텍스트 #FF4D00
+기존 Login Email(118:23)이 로그인 모드만 보여주고 있어 신규 프레임으로 회원가입 전체 폼 분리.
+
+### 레이아웃 (y 좌표)
+| 요소 | y | 비고 |
+|------|---|------|
+| 뒤로 버튼 | 60 | 14pt #9E9E9E |
+| 타이틀 "회원가입" | 100 | 28pt Bold #FFFFFF |
+| 서브타이틀 | 140 | 13pt #9E9E9E |
+| 닉네임 필드 | 184 | 342×54, fill #252525, radius 12 |
+| 이메일 필드 | 248 | 동일 |
+| 비밀번호 필드 + 👁 | 312 | 동일 + 우측 아이콘 |
+| 비밀번호 확인 + 👁 | 376 | 동일 |
+| 강도 바 (4px) | 440 | BG #252525 + Fill #FF9A3C (강함=75%) |
+| 강도 라벨 "강함" | 450 | 11pt SemiBold #FF9A3C |
+| [필수] 이용약관 동의 | 478 | 체크박스(18×18, 채움=Primary) + 라벨 + "자세히 보기" |
+| [필수] 개인정보 처리방침 동의 | 506 | 동일 |
+| [선택] 마케팅 수신 동의 | 534 | 체크박스(빈 상태=#252525), 라벨 #9E9E9E |
+| 회원가입 버튼 | 580 | 342×56, Primary #FF4D00, radius 14 |
+| 로그인 토글 텍스트 | 654 | 14pt #FF4D00 |
+
+### 핵심 변경점
+- **마케팅 동의 체크박스 [선택]** 신규 — 라벨 색상 회색(#9E9E9E)으로 필수와 시각 구분
+- 강도 바 + "강함/보통/약함" 라벨이 비밀번호 입력 시 실시간 표시 (코드는 이미 구현됨)
+
+---
+
+## 3. 레이트 리밋 잠금 상태 (417:178)
+
+3회 연속 로그인 실패 → 60초 잠금 상태 시각화.
+
+### 레이아웃
+| 요소 | y | 비고 |
+|------|---|------|
+| 타이틀 "로그인" | 100 | 28pt Bold |
+| 잠금 배너 | 160 | 342×76, fill #252525, radius 12 |
+|  └ 🔒 아이콘 | 176 | 22pt |
+|  └ "로그인 일시 잠금" | 176 | 15pt Bold #FF4D00 |
+|  └ "3회 연속 실패로 일시 차단됐어요" | 200 | 12pt #FFFFFF |
+|  └ "남은 시간: 47초" | 216 | 13pt Bold #FF9A3C |
+| 이메일 필드 (입력값 dim) | 258 | 텍스트 #737373 (회색 dim) |
+| 비밀번호 필드 (placeholder dim) | 322 | 동일 |
+| 로그인 버튼 (Disabled) | 390 | fill #333333, radius 14, "잠금 해제까지 47초" |
+
+### 핵심 동작
+- 카운트다운은 1초마다 갱신 (Timer)
+- 0초 도달 시 잠금 자동 해제 + 필드/버튼 활성화
+- 카운트다운 표시는 배너 + 버튼 라벨 양쪽 (시야 어디 두든 보이게)
+
+---
+
+## 4. VerifyEmailDialog 모달 (417:191)
+
+기능 가드 차단 시 호출되는 공통 다이얼로그 (이미 코드 구현됨, Figma는 시각화).
+
+### 레이아웃
+| 요소 | y | 비고 |
+|------|---|------|
+| 딤 백드롭 (전체) | 0 | #000000 60% opacity |
+| 다이얼로그 카드 | 256 | 334×340, fill #1A1A1A, radius 20 (중앙 부유) |
+|  └ 📧 아이콘 | 288 | 36pt CENTER |
+|  └ 타이틀 "이메일 인증이 필요해요" | 344 | 18pt Bold #FFFFFF CENTER |
+|  └ 본문 (컨텍스트별) | 380 | 14pt #9E9E9E CENTER (예: "크루에 가입하려면…") |
+|  └ 상태 메시지 | 428 | 12pt #FF9A3C CENTER (이메일 발송 안내) |
+| 버튼 1 "인증 메일 재발송" | 456 | 286×44, Primary #FF4D00, radius 12 |
+| 버튼 2 "인증 완료 확인" | 508 | 286×44, fill #252525, 텍스트 #FF4D00, radius 12 |
+| 텍스트 버튼 "나중에" | 566 | 13pt #9E9E9E CENTER |
+
+### 핵심 동작
+- 본문은 호출처에서 컨텍스트 메시지 주입 (`requireEmailVerified(contextMessage: '...')`)
+- 버튼 1: 슬라이딩 윈도우 5분/3회 잠금 시 비활성 + 남은 시간 표시
+- 버튼 2: `reload()` 호출 후 verified=true면 다이얼로그 자동 닫기
+
+---
 
 ## 코딩 에이전트 참고사항
 
-### 파일: `lib/features/auth/presentation/pages/social_login_page.dart`
+### 야간 큐와 매칭
 
-1. **버튼 순서 변경**: `_buildAppleButton` → `_buildGoogleButton` → `_buildKakaoButton` 순서를 **`_buildKakaoButton` → `_buildNaverButton` → `_buildGoogleButton` → `_buildAppleButton`** 으로 재배치
+| Figma | FEATURE_PLAN 야간 큐 | 코드 위치 |
+|-------|----------------------|-----------|
+| 동기화 배너 | 세션 만료 + 러닝 중 로그아웃 차단 | `home_page.dart` (배너 위젯), `running_sync_queue.dart` (provider) |
+| 회원가입 마케팅 동의 | 마케팅 동의 분리 | `login_page.dart` `_buildConsentRow(isRequired: false)` |
+| 잠금 카운트다운 | 레이트 리밋 카운트다운 UI | `login_page.dart` (카운트다운 Timer 위젯) |
+| VerifyEmailDialog | 이미 구현됨 (`verify_email_dialog.dart`) | 시각 reference로 사용 |
 
-2. **네이버 버튼 추가** (`_buildNaverButton`):
-   - 배경 `Color(0xFF03C75A)`
-   - 텍스트 "네이버로 계속하기" (흰색, w600, 15pt)
-   - 로고: 흰색 'N' 22×22 (Apple/Google과 동일 패턴)
-   - 탭 동작: 카카오와 동일한 "곧 만나보실 수 있어요!" SnackBar
+### 컬러 사용 규칙 준수
+- Primary #FF4D00: 회원가입 버튼, 다이얼로그 주요 버튼, 잠금 타이틀
+- Secondary #FF9A3C: 동기화 카운트, 강도 바, 잠금 카운트다운
+- Disabled #333333: 잠금 상태 버튼
 
-3. **카카오/네이버 SnackBar 메시지 통일**:
-   ```dart
-   ScaffoldMessenger.of(context).showSnackBar(
-     const SnackBar(
-       content: Text('곧 만나보실 수 있어요!'),
-       backgroundColor: Color(0xFF3A3A3A),
-     ),
-   );
-   ```
-   기존 "카카오 로그인은 곧 지원될 예정입니다" → 위 문구로 교체
-
-4. **카카오 공식 로고 에셋**: Figma에는 💬 이모지로 표현했으나, Flutter 구현 시에는 `assets/images/kakao_logo.svg` (또는 `.png`) 추가해 `SvgPicture.asset` / `Image.asset`으로 교체 권장. 에셋 미확보 시 💬 유지.
-
-5. **네이버 로고**: 간단한 'N' 텍스트(흰색 Bold 18pt)로 표현해도 무방. 공식 로고 SVG 확보 시 교체.
-
-6. **Apple 버튼 iOS 배지**: 현재 코드에는 없음. Figma에만 존재. 플랫폼 분기 표시가 필요할 시 `Platform.isIOS` 조건부 렌더링으로 추가 가능.
-
-### 참고 — Figma vs 현재 코드 높이 차이
-- Figma: 버튼 height 56
-- 현재 코드: height 54
-- 코드에 맞춰 진행 또는 54→56 통일 결정 필요 (사소)
+### 미적용 (이슈)
+- 동기화 배너 stroke (Primary 40% 외곽선) — `set_stroke_color` 도구 입력 검증 오류로 미적용. **코드 구현 시 `Border.all(color: AppColors.secondary.withValues(alpha:0.4))` 로 적용**
