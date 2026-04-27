@@ -77,17 +77,13 @@
   - 검증: `flutter analyze` 0 issues + `flutter test` 45건 pass
   - 파일: `lib/features/auth/presentation/pages/login_page.dart`
 
-- [ ] **[가입 UX] 같은 이메일 다른 provider 친절 안내 (2026-04-27 추가, 모범사례 갭)**
-  - 현재: `account-exists-with-different-credential` 에러 발생 시 generic 메시지 "다른 로그인 방식으로 가입된 이메일입니다"만 노출 → 어느 방식으로 가입했는지 모름
-  - 개선: 에러 시 `fetchSignInMethodsForEmail(email)`로 기존 가입 방식 조회 후 안내 ("이 이메일은 Google로 가입돼 있어요. Google로 로그인해주세요")
-  - 구현 체크리스트:
-    - [ ] `signInWith*` 메서드들의 `account-exists-with-different-credential` 핸들러에서 `_auth.fetchSignInMethodsForEmail(email)` 호출
-    - [ ] 반환된 provider list 기준 메시지 분기: `password` / `google.com` / `apple.com` 등
-    - [ ] 사용자 친화 문구로 반환: "이 이메일은 {provider}로 가입돼 있어요. {provider} 로그인을 사용해주세요"
-    - [ ] 단위 테스트: 각 provider별 메시지 정확히 분기되는지 (mock으로 테스트)
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `test/features/auth/auth_firebase_datasource_provider_conflict_test.dart` (신규)
-  - 예상: 40분
+- [x] ✅ **[가입 UX] 같은 이메일 다른 provider 친절 안내 (2026-04-28 구현 완료)**
+  - 구현: `core/auth/provider_conflict_message.dart` 신설 — pure 함수 `providerConflictMessage(methods)` 가 우선순위(소셜 google→apple > password)로 메시지 분기
+  - `auth_firebase_datasource.dart`에 `_convertAuthExceptionAsync` 추가 — `account-exists-with-different-credential` 발생 시 `fetchSignInMethodsForEmail(e.email)` 호출 후 친절 메시지 반환. Google/Apple 사인인 catch 블록을 async 변환에 맞춰 업데이트
+  - 보안 트레이드오프: `fetchSignInMethodsForEmail`는 email enumeration 방지를 위해 Firebase가 deprecate 권고했으나, 이미 자기 이메일로 충돌이 발생한 상황이라 enumeration 표면이 작고 복구 UX 가치가 크므로 유지 (Identity Platform enumeration protection 활성 시 폴백 필요 — 코드 주석에 명시)
+  - 단위 테스트 7건 (Google/Apple/password/빈 list/알 수 없음/소셜 우선/Google vs Apple 우선)
+  - 검증: `flutter analyze` 0 issues + `flutter test` 57건 pass
+  - 파일: `lib/core/auth/provider_conflict_message.dart` (신규), `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `test/core/auth/provider_conflict_message_test.dart` (신규)
 
 - [x] ✅ **[가입 UX] Apple "Hide My Email" 가짜 이메일 처리 점검 (2026-04-28 구현 완료)**
   - 구현: `core/auth/apple_email.dart` 신설 — `AppleEmail.isHidden(email)` 도메인 감지(대소문자/공백 무관, endsWith 매칭으로 사칭 도메인 차단)

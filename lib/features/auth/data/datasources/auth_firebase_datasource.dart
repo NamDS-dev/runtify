@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../../core/auth/apple_email.dart';
+import '../../../../core/auth/provider_conflict_message.dart';
 import '../../../../core/validators/email_validator.dart';
 import '../models/user_model.dart';
 import 'auth_remote_datasource.dart';
@@ -127,7 +128,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
 
       return await _getUserFromFirestore(uid);
     } on FirebaseAuthException catch (e) {
-      throw _convertAuthException(e);
+      throw await _convertAuthExceptionAsync(e);
     }
   }
 
@@ -180,7 +181,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
       }
       throw Exception('Apple 로그인 오류: ${e.message}');
     } on FirebaseAuthException catch (e) {
-      throw _convertAuthException(e);
+      throw await _convertAuthExceptionAsync(e);
     }
   }
 
@@ -319,6 +320,32 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
     );
 
     await _usersRef.doc(uid).set(newUser.toFirestore());
+  }
+
+  // 비동기 분기 — `account-exists-with-different-credential` 인 경우
+  // `fetchSignInMethodsForEmail` 로 기존 가입 방식을 조회해 친절 메시지로 보강.
+  // 그 외 케이스는 sync `_convertAuthException` 으로 위임.
+  Future<Exception> _convertAuthExceptionAsync(FirebaseAuthException e) async {
+    if (e.code == 'account-exists-with-different-credential' &&
+        e.email != null &&
+        e.email!.isNotEmpty) {
+      try {
+        // 보안 트레이드오프: Firebase가 fetchSignInMethodsForEmail을
+        // email enumeration 방지를 위해 deprecate 했지만, 본 시점에서는
+        // 이미 사용자가 자신의 이메일로 사인인을 시도해 provider 충돌이
+        // 발생한 상황이라 추가 enumeration 표면이 거의 없다. 친절한 복구
+        // 가이드(어느 provider로 가입했는지) 가치가 더 크다고 판단해 유지.
+        // 차후 Identity Platform email enumeration protection 활성화 시에는
+        // 이 경로를 비활성화하고 generic 메시지로 폴백 필요.
+        // ignore: deprecated_member_use
+        final methods = await _auth.fetchSignInMethodsForEmail(e.email!);
+        return Exception(providerConflictMessage(methods));
+      } catch (_) {
+        // 조회 실패 시 generic 메시지로 폴백
+        return Exception('다른 로그인 방식으로 가입된 이메일입니다');
+      }
+    }
+    return _convertAuthException(e);
   }
 
   // FirebaseAuthException → 한국어 에러 메시지 변환
