@@ -164,7 +164,17 @@
       "Bash(jobs -l)",
       "mcp__claude_ai_Notion__notion-search",
       "mcp__claude_ai_Notion__notion-create-pages",
-      "mcp__claude_ai_Notion__notion-create-database"
-    ]
+      "mcp__claude_ai_Notion__notion-create-database",
+      "mcp__claude_ai_Notion__notion-fetch",
+      "Bash(git log *)",
+      "Bash(caffeinate:*)",
+      "Bash(nohup caffeinate:*)",
+      "Bash(pkill -f caffeinate*)",
+      "Bash(pmset sleepnow)",
+      "Bash(disown)",
+      "Bash(sleep 5)",
+      "Bash(git commit -m ' *)"
+    ],
+    "defaultMode": "bypassPermissions"
   }
 }
