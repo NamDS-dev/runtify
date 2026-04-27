@@ -33,6 +33,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String email,
     required String password,
     required String name,
+    bool marketingConsent = false,
   }) =>
       throw UnimplementedError();
 

@@ -28,6 +28,12 @@ class UserEntity extends Equatable {
   // (@privaterelay.appleid.com 도메인). 마케팅 발송 시 도달성 안내 등에 사용
   final bool appleHiddenEmail;
 
+  // [선택] 마케팅 정보 수신 동의 (한국 정보통신망법 § 50 대비)
+  // - 가입 시 사용자가 명시적으로 체크해야 true. 언제든지 Profile에서 변경 가능
+  // - 변경 시점은 marketingConsentAt 에 ISO-8601 문자열로 기록
+  final bool marketingConsent;
+  final DateTime? marketingConsentAt;
+
   const UserEntity({
     required this.id,
     required this.name,
@@ -45,6 +51,8 @@ class UserEntity extends Equatable {
     this.homeRegionDong,
     this.emailVerified = false,
     this.appleHiddenEmail = false,
+    this.marketingConsent = false,
+    this.marketingConsentAt,
   });
 
   // 다음 레벨까지 필요한 경험치 (레벨 * 100)

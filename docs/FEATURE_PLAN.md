@@ -59,17 +59,13 @@
   - 파일: `pubspec.yaml`, `lib/core/services/deep_link_handler.dart` (신규), `lib/main.dart`, `android/app/src/main/AndroidManifest.xml`(보류 — 네이티브 편집 금지), `ios/Runner/Info.plist`(보류)
   - 예상: 60분 (Flutter 측만, 네이티브/호스팅 별도)
 
-- [ ] **[가입 UX] 마케팅 수신 동의 체크박스 분리 (선택 동의) (2026-04-27 추가, 한국 표준)**
-  - 현재: 회원가입 시 필수 동의 2개(서비스 약관 / 개인정보)만. 마케팅 동의 미수집 → 추후 마케팅 푸시·이메일 발송 시 법적 근거 없음
-  - 개선: 회원가입 모드 체크박스에 "[선택] 마케팅 정보 수신 동의" 1개 추가 — 선택이므로 미체크라도 가입 가능
-  - 구현 체크리스트:
-    - [ ] `login_page.dart` `_buildConsentRow`에 선택 항목 1개 추가 (`isRequired: false` 옵션 신설)
-    - [ ] `users/{uid}` 문서에 `marketingConsent: bool` + `marketingConsentAt: timestamp` 필드 추가
-    - [ ] `signUpWithEmail` 시 동의 상태 저장 (이메일 가입자만 — 소셜은 추후 별도 동의 화면)
-    - [ ] Profile 화면에 "마케팅 수신 동의" 토글 추가 (언제든 변경 가능, 변경 시 timestamp 갱신)
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/data/models/user_model.dart`, `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/profile/presentation/pages/profile_page.dart`
-  - 예상: 50분
+- [x] ✅ **[가입 UX] 마케팅 수신 동의 체크박스 분리 (선택 동의) (2026-04-28 구현 완료)**
+  - 구현: `login_page.dart` 회원가입 모드에 [선택] 체크박스 1개 추가 — `_buildConsentRow`에 `detailRoutePath?` 옵셔널 처리해 단일 항목 지원
+  - `UserEntity`/`UserModel` 에 `marketingConsent: bool` + `marketingConsentAt: DateTime?` 필드 추가, Firestore 양방향 직렬화 (Timestamp/ISO 문자열 모두 파싱)
+  - `signUpWithEmail` 메서드 체인 (DataSource/Repository/UseCase/Notifier/Page)에 `marketingConsent` 옵셔널 파라미터 추가 — 동의 시 `marketingConsentAt = now`
+  - Profile 화면에 `_MarketingConsentToggle` 위젯 추가 — Switch 토글로 언제든 동의/거부 변경, 변경 시 timestamp 갱신 + SnackBar 안내
+  - 검증: `flutter analyze` 0 issues + `flutter test` 57건 pass
+  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/presentation/pages/profile_page.dart`, `lib/features/auth/domain/entities/user_entity.dart`, `lib/features/auth/data/models/user_model.dart`, `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/data/datasources/auth_mock_datasource.dart`, `lib/features/auth/data/datasources/auth_remote_datasource.dart`, `lib/features/auth/data/repositories/auth_repository_impl.dart`, `lib/features/auth/domain/repositories/auth_repository.dart`, `lib/features/auth/domain/usecases/sign_up_usecase.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`
 
 - [x] ✅ **[가입 UX] autofill hints — 비밀번호 매니저 호환 (2026-04-28 구현 완료)**
   - 구현: 로그인/회원가입 폼 전체를 `AutofillGroup`으로 감싸고 각 필드에 hints 부여 — 이메일=`username,email`, 비번 로그인=`password`, 비번 회원가입/확인=`newPassword`, 닉네임=`name,nickname`

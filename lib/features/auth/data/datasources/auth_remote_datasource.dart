@@ -3,7 +3,12 @@ import '../models/user_model.dart';
 // Firebase Auth + Firestore 직접 호출하는 레이어 인터페이스
 abstract class AuthRemoteDataSource {
   Future<UserModel> signInWithEmail(String email, String password);
-  Future<UserModel> signUpWithEmail(String email, String password, String name);
+  Future<UserModel> signUpWithEmail(
+    String email,
+    String password,
+    String name, {
+    bool marketingConsent = false,
+  });
   Future<UserModel> signInWithGoogle();
   Future<UserModel> signInWithApple();
   Future<void> signOut();

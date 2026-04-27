@@ -30,9 +30,15 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     required String name,
+    bool marketingConsent = false,
   }) async {
     try {
-      final user = await remoteDataSource.signUpWithEmail(email, password, name);
+      final user = await remoteDataSource.signUpWithEmail(
+        email,
+        password,
+        name,
+        marketingConsent: marketingConsent,
+      );
       return Right(user);
     } on AuthFailure catch (e) {
       return Left(e);

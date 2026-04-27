@@ -17,6 +17,7 @@ class SignUpUseCase implements UseCase<UserEntity, SignUpParams> {
       email: params.email,
       password: params.password,
       name: params.name,
+      marketingConsent: params.marketingConsent,
     );
   }
 }
@@ -25,13 +26,16 @@ class SignUpParams extends Equatable {
   final String email;
   final String password;
   final String name;
+  // [선택] 마케팅 정보 수신 동의 — 미체크라도 가입 가능
+  final bool marketingConsent;
 
   const SignUpParams({
     required this.email,
     required this.password,
     required this.name,
+    this.marketingConsent = false,
   });
 
   @override
-  List<Object> get props => [email, password, name];
+  List<Object> get props => [email, password, name, marketingConsent];
 }

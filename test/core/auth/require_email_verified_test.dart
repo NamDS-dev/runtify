@@ -109,8 +109,9 @@ class _NoOpDataSource implements AuthRemoteDataSource {
   Future<UserModel> signUpWithEmail(
     String email,
     String password,
-    String name,
-  ) =>
+    String name, {
+    bool marketingConsent = false,
+  }) =>
       throw UnimplementedError();
 
   @override
@@ -139,6 +140,7 @@ class _NoOpRepository implements AuthRepository {
     required String email,
     required String password,
     required String name,
+    bool marketingConsent = false,
   }) async =>
       Left(const AuthFailure('noop'));
 

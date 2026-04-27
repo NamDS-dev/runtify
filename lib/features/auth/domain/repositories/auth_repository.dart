@@ -16,6 +16,7 @@ abstract class AuthRepository {
     required String email,
     required String password,
     required String name,
+    bool marketingConsent = false,
   });
 
   // 로그아웃

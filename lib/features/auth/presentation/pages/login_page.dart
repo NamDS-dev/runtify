@@ -32,6 +32,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   // 이메일 회원가입 시 필수 동의 체크박스 (소셜 로그인은 탭 행위로 간주, 해당 없음)
   bool _agreedToTerms = false;
   bool _agreedToPrivacy = false;
+  // [선택] 마케팅 수신 동의 — 미체크라도 가입 가능
+  bool _agreedToMarketing = false;
 
   @override
   void initState() {
@@ -72,6 +74,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         normalizedEmail,
         _passwordController.text.trim(),
         NameValidator.normalize(_nameController.text),
+        marketingConsent: _agreedToMarketing,
       );
     } else {
       errorMessage = await authNotifier.signIn(
@@ -220,6 +223,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     label: '[필수] 개인정보 처리방침 동의',
                     detailRoutePath: '/legal/privacy',
                   ),
+                  // [선택] 마케팅 수신 동의 — "자세히 보기" 없음 (단일 항목)
+                  _buildConsentRow(
+                    checked: _agreedToMarketing,
+                    onChanged: (v) =>
+                        setState(() => _agreedToMarketing = v ?? false),
+                    label: '[선택] 마케팅 정보 수신 동의 (이벤트·혜택 알림)',
+                  ),
                 ],
                 const SizedBox(height: 32),
 
@@ -288,12 +298,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // 이메일 회원가입 필수 동의 체크박스 1줄 — 체크박스 + 라벨 + "자세히 보기" 링크
+  // 동의 체크박스 1줄 — 체크박스 + 라벨 + (선택) "자세히 보기" 링크
+  // detailRoutePath 가 null 이면 링크 숨김 (마케팅 수신 동의 같이 단일 항목용)
   Widget _buildConsentRow({
     required bool checked,
     required ValueChanged<bool?> onChanged,
     required String label,
-    required String detailRoutePath,
+    String? detailRoutePath,
   }) {
     return Row(
       children: [
@@ -320,22 +331,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
           ),
         ),
-        TextButton(
-          onPressed: () => context.push(detailRoutePath),
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            minimumSize: const Size(0, 32),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: Text(
-            '자세히 보기',
-            style: TextStyle(
-              color: context.colors.textSecondary,
-              fontSize: 12,
-              decoration: TextDecoration.underline,
+        if (detailRoutePath != null)
+          TextButton(
+            onPressed: () => context.push(detailRoutePath),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              '자세히 보기',
+              style: TextStyle(
+                color: context.colors.textSecondary,
+                fontSize: 12,
+                decoration: TextDecoration.underline,
+              ),
             ),
           ),
-        ),
       ],
     );
   }

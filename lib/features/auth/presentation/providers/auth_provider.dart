@@ -117,10 +117,20 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
   }
 
   // 회원가입
-  Future<String?> signUp(String email, String password, String name) async {
+  Future<String?> signUp(
+    String email,
+    String password,
+    String name, {
+    bool marketingConsent = false,
+  }) async {
     state = const AsyncValue.loading();
     final result = await _signUpUseCase(
-      SignUpParams(email: email, password: password, name: name),
+      SignUpParams(
+        email: email,
+        password: password,
+        name: name,
+        marketingConsent: marketingConsent,
+      ),
     );
 
     return result.fold(

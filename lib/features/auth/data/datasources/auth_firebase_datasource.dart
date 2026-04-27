@@ -55,8 +55,9 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
   Future<UserModel> signUpWithEmail(
     String email,
     String password,
-    String name,
-  ) async {
+    String name, {
+    bool marketingConsent = false,
+  }) async {
     try {
       // 가입 시점부터 정규화된 이메일로 저장해 이후 로그인 매칭 문제 예방
       final normalizedEmail = EmailValidator.normalize(email);
@@ -75,6 +76,8 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
       } catch (_) {}
 
       // Firestore에 유저 문서 저장 — 이메일 가입은 미인증 상태로 시작
+      // 마케팅 동의는 사용자 선택 → 동의한 경우에만 시점 기록
+      final now = DateTime.now();
       final newUser = UserModel(
         id: uid,
         name: name,
@@ -84,6 +87,8 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
         level: 1,
         totalDistance: 0.0,
         emailVerified: false,
+        marketingConsent: marketingConsent,
+        marketingConsentAt: marketingConsent ? now : null,
       );
 
       await _usersRef.doc(uid).set(newUser.toFirestore());

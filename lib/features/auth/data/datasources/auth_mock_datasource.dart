@@ -27,8 +27,9 @@ class AuthMockDataSource implements AuthRemoteDataSource {
   Future<UserModel> signUpWithEmail(
     String email,
     String password,
-    String name,
-  ) async {
+    String name, {
+    bool marketingConsent = false,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 800));
 
     final newUser = UserModel(
@@ -39,6 +40,8 @@ class AuthMockDataSource implements AuthRemoteDataSource {
       points: 0,
       level: 1,
       totalDistance: 0.0,
+      marketingConsent: marketingConsent,
+      marketingConsentAt: marketingConsent ? DateTime.now() : null,
     );
     _currentUser = newUser;
     return newUser;

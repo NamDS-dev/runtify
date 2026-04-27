@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -95,6 +96,10 @@ class ProfilePage extends ConsumerWidget {
 
                 // 테마 설정
                 _ThemeSelector(),
+                const SizedBox(height: 20),
+
+                // 마케팅 수신 동의 토글 (정보통신망법 § 50 대비)
+                _MarketingConsentToggle(user: user),
                 const SizedBox(height: 20),
 
                 // 로그아웃 버튼
@@ -800,6 +805,115 @@ class _RegionRow extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 마케팅 수신 동의 토글 ────────────────────────────────────────────
+// 정보통신망법 § 50 대비 — 사용자가 언제든지 동의 상태 변경 가능
+// 변경 시 users/{uid}.marketingConsent + marketingConsentAt(서버 타임스탬프) 갱신
+class _MarketingConsentToggle extends ConsumerStatefulWidget {
+  final UserEntity user;
+
+  const _MarketingConsentToggle({required this.user});
+
+  @override
+  ConsumerState<_MarketingConsentToggle> createState() =>
+      _MarketingConsentToggleState();
+}
+
+class _MarketingConsentToggleState
+    extends ConsumerState<_MarketingConsentToggle> {
+  bool _saving = false;
+
+  Future<void> _toggle(bool next) async {
+    if (_saving) return;
+    setState(() => _saving = true);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.user.id)
+          .update({
+        'marketingConsent': next,
+        'marketingConsentAt': DateTime.now().toIso8601String(),
+      });
+      await ref.read(authProvider.notifier).refreshUser();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            next
+                ? '마케팅 정보 수신에 동의하셨습니다'
+                : '마케팅 정보 수신을 거부하셨습니다',
+          ),
+          backgroundColor: AppTheme.primary,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('변경 실패: ${e.toString().replaceFirst('Exception: ', '')}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 최신 user 데이터 — refreshUser 후 갱신됨
+    final latest = ref.watch(authProvider).valueOrNull ?? widget.user;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: context.colors.cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '마케팅 정보 수신',
+                  style: TextStyle(
+                    color: context.colors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '이벤트·혜택 알림을 받습니다',
+                  style: TextStyle(
+                    color: context.colors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _saving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Switch(
+                  value: latest.marketingConsent,
+                  onChanged: _toggle,
+                  activeThumbColor: AppTheme.primary,
+                ),
         ],
       ),
     );

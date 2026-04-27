@@ -19,6 +19,8 @@ class UserModel extends UserEntity {
     super.homeRegionDong,
     super.emailVerified,
     super.appleHiddenEmail,
+    super.marketingConsent,
+    super.marketingConsentAt,
   });
 
   // Firestore 문서에서 UserModel 생성
@@ -54,7 +56,20 @@ class UserModel extends UserEntity {
       // 기존 사용자는 필드 부재 → false (미인증)로 취급하고 UI에서 재발송 유도
       emailVerified: data['emailVerified'] == true,
       appleHiddenEmail: data['appleHiddenEmail'] == true,
+      marketingConsent: data['marketingConsent'] == true,
+      marketingConsentAt: _parseDate(data['marketingConsentAt']),
     );
+  }
+
+  // Firestore 의 Timestamp / ISO 문자열 양쪽 모두 안전하게 파싱
+  static DateTime? _parseDate(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is String) return DateTime.tryParse(raw);
+    try {
+      return (raw as dynamic).toDate() as DateTime?;
+    } catch (_) {
+      return null;
+    }
   }
 
   // UserModel을 Firestore에 저장할 Map으로 변환
@@ -78,6 +93,9 @@ class UserModel extends UserEntity {
       'emailVerified': emailVerified,
       // Apple Hide My Email 사용자 식별 (마케팅 발송 시 도달성 분기)
       'appleHiddenEmail': appleHiddenEmail,
+      // 마케팅 수신 동의 (한국 정보통신망법 § 50 대비)
+      'marketingConsent': marketingConsent,
+      'marketingConsentAt': marketingConsentAt?.toIso8601String(),
     };
   }
 }
