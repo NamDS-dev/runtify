@@ -105,7 +105,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Form(
             key: _formKey,
-            child: Column(
+            // AutofillGroup — iOS Keychain / 1Password / Google Smart Lock 등이 폼을 인식하도록 묶음
+            child: AutofillGroup(
+              child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -140,6 +142,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     label: '닉네임',
                     icon: Icons.person_outline,
                     validator: NameValidator.validate,
+                    autofillHints: const [
+                      AutofillHints.name,
+                      AutofillHints.nickname,
+                    ],
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -150,6 +156,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
                   validator: EmailValidator.validate,
+                  // 비번 매니저가 username/email 폼을 인식하도록 두 hint 모두 명시
+                  autofillHints: const [
+                    AutofillHints.username,
+                    AutofillHints.email,
+                  ],
                 ),
                 const SizedBox(height: 16),
 
@@ -163,6 +174,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   validator: _isSignUpMode
                       ? PasswordValidator.validateForSignUp
                       : PasswordValidator.validateForSignIn,
+                  // 회원가입은 newPassword (강한 비번 제안), 로그인은 password (저장된 비번 호출)
+                  autofillHints: _isSignUpMode
+                      ? const [AutofillHints.newPassword]
+                      : const [AutofillHints.password],
                 ),
                 if (_isSignUpMode)
                   PasswordStrengthBar(password: _password),
@@ -186,6 +201,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       }
                       return null;
                     },
+                    autofillHints: const [AutofillHints.newPassword],
                   ),
 
                   // 약관·개인정보 동의 체크박스 (이메일 가입 한정 필수)
@@ -249,6 +265,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
               ],
             ),
+            ), // AutofillGroup
           ),
         ),
       ),
@@ -330,11 +347,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     required bool obscure,
     required VoidCallback onToggle,
     String? Function(String?)? validator,
+    Iterable<String>? autofillHints,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscure,
       validator: validator,
+      autofillHints: autofillHints,
       // 자동완성·개인사전 학습 차단 (비밀번호 노출/힌트 방지)
       autocorrect: false,
       enableSuggestions: false,
@@ -372,12 +391,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     TextInputType? keyboardType,
     bool obscureText = false,
     String? Function(String?)? validator,
+    Iterable<String>? autofillHints,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       obscureText: obscureText,
       validator: validator,
+      autofillHints: autofillHints,
       style: TextStyle(color: context.colors.textPrimary),
       decoration: InputDecoration(
         labelText: label,

@@ -71,19 +71,11 @@
   - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/data/models/user_model.dart`, `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/profile/presentation/pages/profile_page.dart`
   - 예상: 50분
 
-- [ ] **[가입 UX] autofill hints — 비밀번호 매니저 호환 (2026-04-27 추가, 모범사례 갭)**
-  - 현재: `TextFormField`에 `autofillHints` 미지정 → iOS Keychain / 1Password / Google Smart Lock이 폼 인식 못 함. 가입·로그인 시 비번 매니저 자동완성 안 됨
-  - 개선: 폼 필드별 적절한 hints 부여 (`AutofillGroup`으로 묶기)
-  - 구현 체크리스트:
-    - [ ] `login_page.dart` 이메일 필드 → `autofillHints: [AutofillHints.email, AutofillHints.username]`
-    - [ ] 비밀번호 필드 (로그인) → `autofillHints: [AutofillHints.password]`
-    - [ ] 비밀번호 필드 (회원가입) → `autofillHints: [AutofillHints.newPassword]` (비번 매니저가 강한 비번 제안)
-    - [ ] 비밀번호 확인 필드 → `autofillHints: [AutofillHints.newPassword]`
-    - [ ] 닉네임 필드 → `autofillHints: [AutofillHints.name, AutofillHints.nickname]`
-    - [ ] 전체 폼을 `AutofillGroup` 위젯으로 감싸기
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+- [x] ✅ **[가입 UX] autofill hints — 비밀번호 매니저 호환 (2026-04-28 구현 완료)**
+  - 구현: 로그인/회원가입 폼 전체를 `AutofillGroup`으로 감싸고 각 필드에 hints 부여 — 이메일=`username,email`, 비번 로그인=`password`, 비번 회원가입/확인=`newPassword`, 닉네임=`name,nickname`
+  - `_buildTextField`/`_buildPasswordField` 헬퍼에 `autofillHints` 옵션 파라미터 추가
+  - 검증: `flutter analyze` 0 issues + `flutter test` 45건 pass
   - 파일: `lib/features/auth/presentation/pages/login_page.dart`
-  - 예상: 25분
 
 - [ ] **[가입 UX] 같은 이메일 다른 provider 친절 안내 (2026-04-27 추가, 모범사례 갭)**
   - 현재: `account-exists-with-different-credential` 에러 발생 시 generic 메시지 "다른 로그인 방식으로 가입된 이메일입니다"만 노출 → 어느 방식으로 가입했는지 모름
