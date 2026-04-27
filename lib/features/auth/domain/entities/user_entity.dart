@@ -24,6 +24,10 @@ class UserEntity extends Equatable {
   // 기존 사용자는 Firestore에 필드가 없어 fromFirestore에서 false 기본값 부여
   final bool emailVerified;
 
+  // Apple "Hide My Email" 활성으로 가입한 경우 true
+  // (@privaterelay.appleid.com 도메인). 마케팅 발송 시 도달성 안내 등에 사용
+  final bool appleHiddenEmail;
+
   const UserEntity({
     required this.id,
     required this.name,
@@ -40,6 +44,7 @@ class UserEntity extends Equatable {
     this.homeRegionGu,
     this.homeRegionDong,
     this.emailVerified = false,
+    this.appleHiddenEmail = false,
   });
 
   // 다음 레벨까지 필요한 경험치 (레벨 * 100)

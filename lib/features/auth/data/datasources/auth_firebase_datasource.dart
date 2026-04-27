@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import '../../../../core/auth/apple_email.dart';
 import '../../../../core/validators/email_validator.dart';
 import '../models/user_model.dart';
 import 'auth_remote_datasource.dart';
@@ -161,11 +162,15 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
 
       // Firestore에 유저 문서가 없으면 신규 생성
       // Apple은 ID 토큰 시점에 이메일이 검증된 상태로 제공됨 → emailVerified: true
+      // Hide My Email 사용 시 @privaterelay.appleid.com 임시 릴레이 이메일이 들어옴 → appleHiddenEmail: true 표시
+      final resolvedEmail =
+          appleCredential.email ?? userCredential.user?.email ?? '';
       await _createUserIfNotExists(
         uid: uid,
         name: name ?? userCredential.user?.displayName ?? '러너',
-        email: appleCredential.email ?? userCredential.user?.email ?? '',
+        email: resolvedEmail,
         emailVerified: true,
+        appleHiddenEmail: AppleEmail.isHidden(resolvedEmail),
       );
 
       return await _getUserFromFirestore(uid);
@@ -295,6 +300,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
     required String email,
     String? profileImageUrl,
     bool emailVerified = false,
+    bool appleHiddenEmail = false,
   }) async {
     final doc = await _usersRef.doc(uid).get();
     if (doc.exists) return; // 이미 존재하면 스킵
@@ -309,6 +315,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
       level: 1,
       totalDistance: 0.0,
       emailVerified: emailVerified,
+      appleHiddenEmail: appleHiddenEmail,
     );
 
     await _usersRef.doc(uid).set(newUser.toFirestore());

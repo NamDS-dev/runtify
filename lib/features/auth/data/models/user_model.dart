@@ -18,6 +18,7 @@ class UserModel extends UserEntity {
     super.homeRegionGu,
     super.homeRegionDong,
     super.emailVerified,
+    super.appleHiddenEmail,
   });
 
   // Firestore 문서에서 UserModel 생성
@@ -52,6 +53,7 @@ class UserModel extends UserEntity {
       homeRegionDong: data['homeRegionDong'] as String?,
       // 기존 사용자는 필드 부재 → false (미인증)로 취급하고 UI에서 재발송 유도
       emailVerified: data['emailVerified'] == true,
+      appleHiddenEmail: data['appleHiddenEmail'] == true,
     );
   }
 
@@ -74,6 +76,8 @@ class UserModel extends UserEntity {
       'homeRegionDong': homeRegionDong,
       // 이메일 인증 상태 (Phase 7: 정책 § 1)
       'emailVerified': emailVerified,
+      // Apple Hide My Email 사용자 식별 (마케팅 발송 시 도달성 분기)
+      'appleHiddenEmail': appleHiddenEmail,
     };
   }
 }

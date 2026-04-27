@@ -89,16 +89,14 @@
   - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `test/features/auth/auth_firebase_datasource_provider_conflict_test.dart` (신규)
   - 예상: 40분
 
-- [ ] **[가입 UX] Apple "Hide My Email" 가짜 이메일 처리 점검 (2026-04-27 추가, 코드 점검)**
-  - 현재: `signInWithApple`에서 `appleCredential.email` 그대로 저장. Hide My Email 활성 시 `xxxxxx@privaterelay.appleid.com` 같은 임시 이메일이 들어옴
-  - 점검: 현재 로직이 임시 이메일도 정상 처리하는지 + 추후 사용자가 Apple ID 설정에서 Hide My Email 해제했을 때 동기화되는지
-  - 구현 체크리스트:
-    - [ ] `signInWithApple` 흐름 점검 + 임시 이메일 케이스 단위 테스트 추가
-    - [ ] `users/{uid}` 문서에 `appleHiddenEmail: bool` 필드 (`@privaterelay.appleid.com` 도메인 감지) 저장 → 추후 마케팅 발송 시 제외 또는 안내 가능
-    - [ ] 사용자 안내 문구: "Apple Hide My Email로 가입하셔서 마케팅 알림이 도달하지 않을 수 있습니다" (선택)
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - 파일: `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/data/models/user_model.dart`, `test/features/auth/apple_hide_email_test.dart` (신규)
-  - 예상: 30분
+- [x] ✅ **[가입 UX] Apple "Hide My Email" 가짜 이메일 처리 점검 (2026-04-28 구현 완료)**
+  - 구현: `core/auth/apple_email.dart` 신설 — `AppleEmail.isHidden(email)` 도메인 감지(대소문자/공백 무관, endsWith 매칭으로 사칭 도메인 차단)
+  - `UserEntity`/`UserModel`에 `appleHiddenEmail: bool` 필드 추가, Firestore 직렬화 포함
+  - `signInWithApple` 흐름에서 `appleCredential.email` 또는 Firebase user.email 을 정규화 후 `AppleEmail.isHidden`로 분기 → `_createUserIfNotExists(appleHiddenEmail: ...)`
+  - 단위 테스트 5건 (null/빈/일반/Hide/대소문자/사칭 도메인)
+  - 향후 활용: 마케팅 발송 시 도달성 안내 분기 가능. 사용자가 Apple ID 설정에서 해제 시 재로그인 받으면 자동 갱신
+  - 검증: `flutter analyze` 0 issues + `flutter test` 50건 pass
+  - 파일: `lib/core/auth/apple_email.dart` (신규), `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/data/models/user_model.dart`, `lib/features/auth/domain/entities/user_entity.dart`, `test/core/auth/apple_email_test.dart` (신규)
 
 - [x] ✅ **[가입 UX] 가입 직후 홈 지역 설정 강제 온보딩 (2026-04-24 구현 완료)**
   - 구현: `/onboarding/home-region` 전체화면 페이지 신설 — GPS 감지 버튼 + 강한 안내 + "건너뛰기"(확인 다이얼로그 후 세션 스킵 플래그)
