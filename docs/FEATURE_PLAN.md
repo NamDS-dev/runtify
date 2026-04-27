@@ -15,35 +15,17 @@
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
 
-- [ ] **[입력 검증] 닉네임 규칙 강화 — 욕설·중복·사칭·이모지·grapheme (2026-04-27 추가)**
-  - 현재: `NameValidator`는 길이 2~20자 + 제어 문자 차단만. 추가 보호 규칙 필요
-  - 정책 (한 번에 모두 적용):
-    1. **욕설/비속어 필터** — `assets/badwords_ko.json` 자체 사전(핵심 50~100단어) 기반. 대소문자 무관, 공백/특수문자 제거 후 매칭
-    2. **닉네임 중복 검사** — Firestore `users` 컬렉션에 `nameNormalized: string` 필드 추가, `where('nameNormalized', '==', normalize(input))` 쿼리. 트랜잭션으로 동시성 보장
-    3. **운영진 이름 사칭 차단** — `assets/reserved_names.json`에 하드코딩 리스트 (관리자, 운영자, admin, 운영팀, runtify, runtify팀, anthropic, claude, 공지사항, 고객센터, system, 시스템 등). 정규화 후 부분 매치 차단
-    4. **숫자만 닉네임 차단** — `^\d+$` 정규식 매치 시 거부 ("닉네임에 글자를 포함해주세요")
-    5. **이모지만 닉네임 차단** — 모든 grapheme이 이모지면 거부 ("닉네임에 텍스트를 포함해주세요"). `characters` 패키지의 `Characters` 사용
-    6. **이모지 grapheme 카운트 정확화** — `value.length` 대신 `value.characters.length`로 측정 (🔥를 1자로 셈)
-  - 구현 체크리스트:
-    - [ ] `assets/badwords_ko.json` 신규 (50~100단어 리스트, 추후 운영 중 보강)
-    - [ ] `assets/reserved_names.json` 신규 (운영진 사칭 단어 리스트)
-    - [ ] `pubspec.yaml`에 두 에셋 등록
-    - [ ] `NameValidator.validate`에 5개 추가 규칙 통합 + grapheme 길이 측정으로 변경
-    - [ ] `NameValidator.containsBadword(input)` / `isReserved(input)` 정적 메서드 분리 (테스트 편의)
-    - [ ] Firestore 중복 쿼리는 별도 클래스로 분리 (`NicknameAvailability` 서비스, 비동기) — `NameValidator`는 sync 검증, 중복은 별도 단계
-    - [ ] `signUpWithEmail` 흐름: 폼 sync 검증 → 비동기 중복 검사 → Firebase 가입. 가입 직후 `nameNormalized` 필드도 같이 저장
-    - [ ] 기존 사용자 마이그레이션: `users` 컬렉션에 `nameNormalized` 누락 문서가 있을 수 있으므로 `getCurrentUser` 시 backfill (현재 name → nameNormalized) 한번 동기화
-    - [ ] 단위 테스트:
-      - [ ] 욕설 포함 차단 (3건+)
-      - [ ] 운영진 이름 차단 (관리자/admin/runtify팀 등 4건+)
-      - [ ] 숫자만 차단 ("12345")
-      - [ ] 이모지만 차단 ("🔥🔥")
-      - [ ] grapheme 길이 — "🔥" 1자로 카운트 (기존 `length`는 2)
-      - [ ] grapheme 길이 — "abc🔥def" 7자로 카운트
-      - [ ] 정상 케이스 (한글+이모지 조합 "러너🔥") 통과
-  - 파일: `lib/core/validators/name_validator.dart`, `lib/core/services/nickname_availability.dart` (신규), `assets/badwords_ko.json` (신규), `assets/reserved_names.json` (신규), `pubspec.yaml`, `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/data/models/user_model.dart`, `test/core/validators/name_validator_test.dart` (확장), `test/core/services/nickname_availability_test.dart` (신규)
-  - 예상: 100분
-  - **⚠️ 주의**: Firestore 중복 쿼리에 인덱스 자동 생성 필요할 수 있음. 야간 PM은 `firestore.indexes.json` 변경 금지 → 인덱스 필요 시 사용자 직접 작업으로 분리 (Firebase Console에서 자동 생성 링크 클릭). 이미 `email` 필터에 인덱스가 있어서 단일 필드 쿼리는 가능할 가능성 높음
+- [x] ✅ **[입력 검증] 닉네임 규칙 강화 — 욕설·사칭·이모지·grapheme (2026-04-28 부분 구현)**
+  - ✅ 완료: 욕설/비속어/운영진 사칭/숫자만/이모지만/grapheme 길이 — 모두 sync 검증으로 `NameValidator` 에 통합
+    - 한국어 욕설 + 영문 욕설 + 우회 시도(특수문자 사이) 모두 매칭 — `_compactForMatching` 으로 소문자 + 공백/특수문자 제거 후 부분 매치
+    - 운영진 사칭 (admin/관리자/runtify팀/공지/고객센터 등) 부분 매치 차단
+    - 숫자만/이모지만 닉네임 거부 (한국어 안내 메시지)
+    - grapheme 길이 측정 (`String.characters.length`) — 🔥 단일 = 1자로 카운트, "러너🔥" 4자
+    - 욕설/예약어 리스트는 코드 임베드 (assets JSON 이관은 운영 단계로)
+    - 단위 테스트 26건 (기본 규칙/normalize/grapheme/욕설/사칭/숫자만/이모지만)
+  - ⏸ 차기 세션: **Firestore 중복 검사** (`NicknameAvailability` 서비스 + `nameNormalized` 필드 + 가입 직전 비동기 검사 + 기존 사용자 backfill) — Firestore 인덱스 의존성 + 사용자 직접 콘솔 확인 필요해 별도 분리
+  - 파일: `lib/core/validators/name_validator.dart`, `pubspec.yaml` (`characters` 명시 의존), `test/core/validators/name_validator_test.dart` (확장)
+  - 검증: `flutter analyze` 0 issues + `flutter test` 75건 pass
 
 - [ ] **[가입 UX] 이메일 인증 Deep Link → 앱 자동 진입 (2026-04-27 추가, 모범사례 갭)**
   - 현재: 인증 메일 링크 클릭 → Firebase 웹 페이지에서 "verified" 표시. 사용자가 앱 다시 열어 "인증 완료 확인" 버튼 눌러야 반영

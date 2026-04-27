@@ -33,6 +33,9 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
+  # Grapheme cluster 기반 문자열 처리 (이모지 길이 정확화 등)
+  characters: ^1.4.0
+
   # 상태 관리
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
