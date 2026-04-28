@@ -32,6 +32,9 @@ class RunningSessionModel extends RunningSessionEntity {
     super.newBadgeIds,
     // 신규 갱신 PB (Firestore 미저장, 결과 화면 🏆 배너용)
     super.newPersonalRecords,
+    // 사용자 부여 제목/메모
+    super.title,
+    super.memo,
   });
 
   factory RunningSessionModel.fromFirestore(
@@ -83,6 +86,9 @@ class RunningSessionModel extends RunningSessionEntity {
       rankingRegionSi: data['rankingRegionSi'] as String?,
       rankingRegionGu: data['rankingRegionGu'] as String?,
       rankingRegionDong: data['rankingRegionDong'] as String?,
+      // 사용자 제목/메모 역직렬화
+      title: data['title'] as String?,
+      memo: data['memo'] as String?,
     );
   }
 
@@ -115,7 +121,10 @@ class RunningSessionModel extends RunningSessionEntity {
       if (rankingRegionSi != null) 'rankingRegionSi': rankingRegionSi,
       if (rankingRegionGu != null) 'rankingRegionGu': rankingRegionGu,
       if (rankingRegionDong != null) 'rankingRegionDong': rankingRegionDong,
-      // newBadgeIds는 Firestore에 저장하지 않음 (메모리 전달용)
+      // 사용자 제목/메모 (null이면 저장 안 함)
+      if (title != null && title!.isNotEmpty) 'title': title,
+      if (memo != null && memo!.isNotEmpty) 'memo': memo,
+      // newBadgeIds/newPersonalRecords 는 Firestore 미저장 (메모리 전달용)
     };
   }
 
@@ -160,6 +169,8 @@ class RunningSessionModel extends RunningSessionEntity {
       rankingRegionDong: rankingRegionDong,
       newBadgeIds: newBadgeIds ?? this.newBadgeIds,
       newPersonalRecords: newPersonalRecords ?? this.newPersonalRecords,
+      title: title,
+      memo: memo,
     );
   }
 }

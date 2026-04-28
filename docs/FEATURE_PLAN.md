@@ -97,17 +97,18 @@
   - 파일: `lib/core/providers/gps_signal_provider.dart` (신규), `lib/features/running/presentation/pages/running_page.dart`
   - 예상: 50분
 
-- [ ] **[러닝v2] 러닝 데이터 편집 — 제목/메모 (2026-04-28 추가)**
-  - 정책: 러닝 종료 후 또는 기록 상세에서 제목·메모 추가/수정 가능. 검색·필터링 기반
-  - 구현 체크리스트:
-    - [ ] `RunningSessionEntity`/`Model`에 `title: String?`, `memo: String?` 필드 추가 + Firestore 직렬화
-    - [ ] `running_detail_page.dart`에 편집 버튼(연필 아이콘) + EditSessionDialog (제목 30자, 메모 200자, 검증)
-    - [ ] 저장 시 `RunningFirestoreDataSource.updateSession(sessionId, partial)` 호출
-    - [ ] 결과 페이지에서도 저장 직전 "이 러닝에 제목 붙이기" 옵션 (선택, 기본 빈 값)
-    - [ ] 단위 테스트: 검증 (길이 초과, 제어 문자), update 호출
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - 파일: `lib/features/running/domain/entities/running_session_entity.dart`, `lib/features/running/data/models/running_session_model.dart`, `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/features/running/presentation/pages/running_detail_page.dart`, `lib/features/running/presentation/widgets/edit_session_dialog.dart` (신규)
-  - 예상: 40분
+- [x] ✅ **[러닝v2] 러닝 데이터 편집 — 제목/메모 (2026-04-28 구현 완료)**
+  - 구현:
+    - `RunningSessionEntity`/`Model`에 `title: String?`, `memo: String?` 필드 추가, Firestore 양방향 직렬화 (빈 값은 저장 안 함)
+    - `RunningDataSource.updateSession(sessionId, partial)` 인터페이스 추가 — Firestore impl, Mock(no-op), HealthConnect(no-op)
+    - 빈 문자열/null 값은 `FieldValue.delete()` 로 처리 (필드 제거)
+    - `EditSessionDialog` 신설 — 제목 30자/메모 200자, `_NoControlCharsFormatter` 로 제어 문자 입력 차단(메모는 `\n` 예외 허용)
+    - `running_detail_page.dart` AppBar 에 편집 IconButton 추가 → 다이얼로그 호출 → updateSession + 로컬 state 즉시 반영 + recentRunsProvider invalidate + SnackBar
+    - 페이지 본문에 제목·메모 표시 (있을 때만) — 날짜/지역 위에 큰 제목 + 회색 메모
+    - ConsumerWidget → ConsumerStatefulWidget 변환 (편집 후 setState 로 즉시 반영)
+  - 결과 페이지의 "저장 직전 제목 붙이기"는 차기 세션 (러닝 결과 흐름은 별도 검토)
+  - 검증: `flutter analyze` 0 issues + `flutter test` 99건 pass (기존 통과 유지)
+  - 파일: `lib/features/running/domain/entities/running_session_entity.dart`, `lib/features/running/data/models/running_session_model.dart`, `lib/features/running/data/datasources/running_mock_datasource.dart`(인터페이스), `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/features/running/data/datasources/health_connect_datasource.dart`(no-op), `lib/features/running/presentation/pages/running_detail_page.dart`, `lib/features/running/presentation/widgets/edit_session_dialog.dart` (신규)
 
 - [ ] **[러닝v2] 잠금 화면 (실수 터치 방지) (2026-04-28 추가)**
   - 정책: 러닝 중 화면을 사용자가 잠글 수 있게 — 토글 버튼으로 잠금 활성. 해제는 위로 길게 스와이프(2초+ vertical drag)

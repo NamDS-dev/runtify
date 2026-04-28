@@ -423,4 +423,23 @@ class RunningFirestoreDataSource implements RunningDataSource {
   Future<void> deleteSession(String sessionId) async {
     await _sessionsRef.doc(sessionId).delete();
   }
+
+  // 세션 부분 업데이트 — title/memo 등 사후 편집용
+  // partial 키 중 빈 문자열인 항목은 FieldValue.delete() 로 처리해 Firestore 필드 제거.
+  @override
+  Future<void> updateSession(
+    String sessionId,
+    Map<String, dynamic> partial,
+  ) async {
+    final patch = <String, dynamic>{};
+    partial.forEach((k, v) {
+      if (v == null || (v is String && v.isEmpty)) {
+        patch[k] = FieldValue.delete();
+      } else {
+        patch[k] = v;
+      }
+    });
+    if (patch.isEmpty) return;
+    await _sessionsRef.doc(sessionId).update(patch);
+  }
 }

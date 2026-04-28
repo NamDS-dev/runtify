@@ -8,15 +8,30 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/running_firestore_datasource.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
+import '../widgets/edit_session_dialog.dart';
 
 // 러닝 기록 상세 화면 (홈 카드 탭 시 표시)
-class RunningDetailPage extends ConsumerWidget {
+class RunningDetailPage extends ConsumerStatefulWidget {
   final RunningSessionEntity session;
 
   const RunningDetailPage({super.key, required this.session});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RunningDetailPage> createState() => _RunningDetailPageState();
+}
+
+class _RunningDetailPageState extends ConsumerState<RunningDetailPage> {
+  // 사용자 편집 후 화면 즉시 반영용 로컬 오버라이드 (Firestore 갱신과 별도)
+  String? _localTitle;
+  String? _localMemo;
+
+  RunningSessionEntity get session => widget.session;
+  String? get _title => _localTitle ?? session.title;
+  String? get _memo => _localMemo ?? session.memo;
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     return Scaffold(
       backgroundColor: context.colors.background,
       appBar: AppBar(
@@ -26,6 +41,11 @@ class RunningDetailPage extends ConsumerWidget {
         ),
         title: const Text('기록 상세'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: '제목·메모 편집',
+            onPressed: () => _onEditPressed(context, ref),
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.red),
             onPressed: () => _confirmDelete(context, ref),
@@ -46,6 +66,30 @@ class RunningDetailPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ─── 제목/메모 (있을 때만) ─────────────────────
+                  if (_title != null && _title!.isNotEmpty) ...[
+                    Text(
+                      _title!,
+                      style: TextStyle(
+                        color: context.colors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  if (_memo != null && _memo!.isNotEmpty) ...[
+                    Text(
+                      _memo!,
+                      style: TextStyle(
+                        color: context.colors.textSecondary,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
                   // ─── 날짜 + 지역 ───────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -186,6 +230,46 @@ class RunningDetailPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  // 제목·메모 편집 다이얼로그 호출 + Firestore 부분 업데이트
+  Future<void> _onEditPressed(BuildContext context, WidgetRef ref) async {
+    final result = await EditSessionDialog.show(
+      context,
+      initialTitle: _title,
+      initialMemo: _memo,
+    );
+    if (result == null || !context.mounted) return;
+
+    try {
+      final dataSource = ref.read(runningDataSourceProvider);
+      await dataSource.updateSession(session.id, {
+        'title': result.title ?? '',
+        'memo': result.memo ?? '',
+      });
+      if (!mounted) return;
+      setState(() {
+        _localTitle = result.title;
+        _localMemo = result.memo;
+      });
+      // 다른 화면 (홈 / 캘린더)에서도 갱신 반영되도록 invalidate
+      final user = ref.read(authProvider).valueOrNull;
+      if (user != null) {
+        ref.invalidate(recentRunsProvider(user.id));
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        const SnackBar(content: Text('수정되었습니다')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(
+          content: Text('수정 실패: ${e.toString().replaceFirst('Exception: ', '')}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   // 삭제 확인 다이얼로그

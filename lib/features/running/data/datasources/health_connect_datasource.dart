@@ -169,4 +169,13 @@ class HealthConnectDataSource implements RunningDataSource {
   Future<void> deleteSession(String sessionId) async {
     // Health Connect는 앱이 직접 삭제할 수 없음
   }
+
+  // 세션 업데이트 (Health Connect는 메타데이터 수정 불가 - no-op)
+  @override
+  Future<void> updateSession(
+    String sessionId,
+    Map<String, dynamic> partial,
+  ) async {
+    // Health Connect 의 raw record 는 수정할 수 없음
+  }
 }

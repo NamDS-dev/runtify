@@ -8,6 +8,10 @@ abstract class RunningDataSource {
       String userId, int year, int month);
   Future<RunningSessionModel> saveSession(RunningSessionModel session);
   Future<void> deleteSession(String sessionId);
+
+  // 세션 부분 업데이트 (title/memo 등 사후 편집)
+  // partial 의 키는 Firestore 필드명. null 값은 해당 필드 삭제.
+  Future<void> updateSession(String sessionId, Map<String, dynamic> partial);
 }
 
 // 목업 데이터소스 - Health Connect 연동 전 또는 웹/데모 모드에서 사용
@@ -81,5 +85,13 @@ class RunningMockDataSource implements RunningDataSource {
   @override
   Future<void> deleteSession(String sessionId) async {
     _mockData.removeWhere((s) => s.id == sessionId);
+  }
+
+  @override
+  Future<void> updateSession(
+    String sessionId,
+    Map<String, dynamic> partial,
+  ) async {
+    // 목업: no-op (UI 흐름 검증용)
   }
 }

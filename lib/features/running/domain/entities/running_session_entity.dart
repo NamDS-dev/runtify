@@ -55,6 +55,10 @@ class RunningSessionEntity extends Equatable {
   // Firestore 미저장, 결과 화면 🏆 배너 표시용
   final List<String> newPersonalRecords;
 
+  // 사용자가 부여한 제목·메모 (러닝 종료 후 또는 기록 상세에서 편집 가능)
+  final String? title;
+  final String? memo;
+
   const RunningSessionEntity({
     required this.id,
     required this.userId,
@@ -81,6 +85,8 @@ class RunningSessionEntity extends Equatable {
     this.rankingRegionDong,
     this.newBadgeIds = const [],
     this.newPersonalRecords = const [],
+    this.title,
+    this.memo,
   });
 
   bool get isCompleted => endTime != null;
