@@ -227,6 +227,17 @@
 
 ### 🟡 기획 확정 대기 (사용자 검토 후 구현)
 
+- [ ] **[관측성] FirebaseCrashlytics + Analytics 도입 (2026-04-28 야간 오딧 발견)**
+  - 현재: `debugPrint` 만 사용. Release 빌드에서는 모든 로그·에러 정보가 사라짐. 크래시 발생해도 추적 불가
+  - 개선: `firebase_crashlytics` 추가 → uncaught Flutter/Native 에러 자동 수집 + custom log/사용자 ID/세션 정보. `firebase_analytics` 로 핵심 이벤트 트래킹(가입/로그인/러닝 시작/저장/크루 가입 등)
+  - 결정 필요:
+    - [ ] 새 의존성 2개(`firebase_crashlytics` + `firebase_analytics`) 도입 허용 여부
+    - [ ] Crashlytics 활성 시점: 개발 빌드(dev 환경) + 프로덕션 모두 / 프로덕션만
+    - [ ] PII 정책: `setUserId(uid)` 사용 vs hash 처리 / 사용자 이메일·닉네임 절대 미수집 명시
+    - [ ] Analytics 이벤트 카탈로그 1차 정의 (가입 / 로그인 / 러닝 시작 / 러닝 저장 / 크루 가입 / 인증 메일 발송 / 결제 — 향후)
+  - 결정 후 작업: `pubspec.yaml` 추가 + `main.dart`에서 `FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError` + Native 설정(google-services / GoogleService-Info.plist 변경 — 사용자 직접). 예상 90분 + Native 검증
+  - **야간 제약**: 새 의존성 2건 + 네이티브 편집 — 모두 야간 자동 구현 금지
+
 - [ ] **[인증] 이메일 인증 (Verification) 플로우 (2026-04-20 발견)**
   - 현재: `signUpWithEmail`에서 계정 생성 후 인증 이메일 자동 발송 없음. 미검증 계정도 전체 기능 접근 가능
   - 개선: `sendEmailVerification()` 호출 + `emailVerified` 필드를 UserEntity에 추가 + 미인증 상태 UI 배너 + 인증 전 특정 기능(크루 가입, 리워드) 제한
