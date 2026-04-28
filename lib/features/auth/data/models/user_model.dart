@@ -21,6 +21,7 @@ class UserModel extends UserEntity {
     super.appleHiddenEmail,
     super.marketingConsent,
     super.marketingConsentAt,
+    super.nameNormalized,
   });
 
   // Firestore 문서에서 UserModel 생성
@@ -58,6 +59,7 @@ class UserModel extends UserEntity {
       appleHiddenEmail: data['appleHiddenEmail'] == true,
       marketingConsent: data['marketingConsent'] == true,
       marketingConsentAt: _parseDate(data['marketingConsentAt']),
+      nameNormalized: data['nameNormalized'] as String?,
     );
   }
 
@@ -96,6 +98,8 @@ class UserModel extends UserEntity {
       // 마케팅 수신 동의 (한국 정보통신망법 § 50 대비)
       'marketingConsent': marketingConsent,
       'marketingConsentAt': marketingConsentAt?.toIso8601String(),
+      // 닉네임 중복 검사용 정규화 키
+      'nameNormalized': nameNormalized,
     };
   }
 }

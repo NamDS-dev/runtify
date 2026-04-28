@@ -22,20 +22,20 @@
 >
 > 회원가입 영역은 거의 마무리 단계 — 4건 미완 모두 처리 후 다음 영역(러닝/크루) 진입 결정 예정
 
-- [x] ✅ **[입력 검증] 닉네임 규칙 강화 — 욕설·사칭·이모지·grapheme (2026-04-28 부분 구현)**
-  - ✅ 완료: 욕설/비속어/운영진 사칭/숫자만/이모지만/grapheme 길이 — 모두 sync 검증으로 `NameValidator` 에 통합
-    - 한국어 욕설 + 영문 욕설 + 우회 시도(특수문자 사이) 모두 매칭 — `_compactForMatching` 으로 소문자 + 공백/특수문자 제거 후 부분 매치
-    - 운영진 사칭 (admin/관리자/runtify팀/공지/고객센터 등) 부분 매치 차단
-    - 숫자만/이모지만 닉네임 거부 (한국어 안내 메시지)
-    - grapheme 길이 측정 (`String.characters.length`) — 🔥 단일 = 1자로 카운트, "러너🔥" 4자
-    - 욕설/예약어 리스트는 코드 임베드 (assets JSON 이관은 운영 단계로)
-    - 단위 테스트 26건 (기본 규칙/normalize/grapheme/욕설/사칭/숫자만/이모지만)
-  - ⏸ 차기 세션: **Firestore 중복 검사** (`NicknameAvailability` 서비스 + `nameNormalized` 필드 + 가입 직전 비동기 검사 + 기존 사용자 backfill)
-    - **인덱스 처리 방식 (2026-04-28 결정)**: `firestore.indexes.json`에 `users.nameNormalized` 단일 필드 인덱스 명시적 추가 → 사용자가 `firebase deploy --only firestore:indexes` 직접 실행 (야간 PM은 indexes.json 변경 금지)
-    - 야간 작업 범위: NicknameAvailability 서비스 코드 + `nameNormalized` 필드 추가 + 가입 흐름 통합 + backfill + 단위 테스트
-    - 사용자 직접 작업: indexes.json 수정 PR 검토 + `firebase deploy` 실행 (수정 자체는 야간이 만들고, deploy만 사용자 직접)
-  - 파일: `lib/core/validators/name_validator.dart`, `pubspec.yaml` (`characters` 명시 의존), `test/core/validators/name_validator_test.dart` (확장)
-  - 검증: `flutter analyze` 0 issues + `flutter test` 75건 pass
+- [x] ✅ **[입력 검증] 닉네임 규칙 강화 — 욕설·사칭·이모지·grapheme + Firestore 중복 검사 (2026-04-28 구현 완료)**
+  - sync 검증 (이전 야간 완료): 욕설/비속어/운영진 사칭/숫자만/이모지만/grapheme 길이 — 모두 `NameValidator`
+  - **Firestore 중복 검사 (2026-04-28 야간 추가 완료)**:
+    - `lib/core/services/nickname_availability.dart` 신설 — `NicknameAvailability.check(name, currentUserId)` 가 `users.nameNormalized` 단일 필드 쿼리, 본인 문서는 매치에서 제외
+    - 결과 enum: `available` / `taken` / `error` (네트워크/인덱스 미생성 등). UseCase 레벨에서 `taken` 만 차단, `error` 는 graceful degrade
+    - `UserEntity`/`UserModel`에 `nameNormalized: String?` 필드 추가, Firestore 양방향 직렬화
+    - `signUpWithEmail` / `_createUserIfNotExists` 에서 가입 시 `NicknameAvailability.normalizeForKey(name)` 자동 저장
+    - **기존 사용자 backfill**: `getCurrentUser` 호출 시 `nameNormalized == null` 이면 한 번 channel update — 회원 흐름 차단 안 함 (try/catch)
+    - `AuthNotifier.signUp` 에서 사전 비동기 검사 → `taken` 시 "이미 사용 중인 닉네임입니다" 반환
+    - `nicknameAvailabilityProvider` Riverpod provider 등록
+    - 단위 테스트 4건 (`normalizeForKey` pure 함수 — 빈/대소문자/공백/한글). Firestore 쿼리 통합 테스트는 차기 세션 (fake_cloud_firestore 새 dev dep 필요)
+  - **사용자 직접 작업 (다음 단계)**: `firestore.indexes.json` 에 `users.nameNormalized` 단일 필드 인덱스 명시 + `firebase deploy --only firestore:indexes`
+  - 검증: `flutter analyze` 0 issues + `flutter test` 86건 pass
+  - 파일: `lib/core/validators/name_validator.dart`, `lib/core/services/nickname_availability.dart` (신규), `lib/features/auth/data/datasources/auth_firebase_datasource.dart`, `lib/features/auth/data/models/user_model.dart`, `lib/features/auth/domain/entities/user_entity.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`, `pubspec.yaml`, `test/core/services/nickname_availability_test.dart` (신규), `test/core/validators/name_validator_test.dart` (확장)
 
 - [ ] **[가입 UX] 이메일 인증 Deep Link → 앱 자동 진입 (2026-04-27 추가, 모범사례 갭)**
   - 현재: 인증 메일 링크 클릭 → Firebase 웹 페이지에서 "verified" 표시. 사용자가 앱 다시 열어 "인증 완료 확인" 버튼 눌러야 반영

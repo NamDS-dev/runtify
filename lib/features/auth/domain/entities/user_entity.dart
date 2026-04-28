@@ -34,6 +34,11 @@ class UserEntity extends Equatable {
   final bool marketingConsent;
   final DateTime? marketingConsentAt;
 
+  // 닉네임 중복 검사용 정규화 키 — `NameValidator.normalize` + `.toLowerCase()`
+  // 필드는 Firestore 단일 필드 인덱스 대상. 가입/닉네임 변경 시 함께 갱신.
+  // 기존 사용자 문서에는 부재할 수 있어 nullable.
+  final String? nameNormalized;
+
   const UserEntity({
     required this.id,
     required this.name,
@@ -53,6 +58,7 @@ class UserEntity extends Equatable {
     this.appleHiddenEmail = false,
     this.marketingConsent = false,
     this.marketingConsentAt,
+    this.nameNormalized,
   });
 
   // 다음 레벨까지 필요한 경험치 (레벨 * 100)

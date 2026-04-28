@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../../../core/router/auth_router_state.dart';
 import '../../../../core/services/email_verification_rate_limiter.dart';
 import '../../../../core/services/login_rate_limiter.dart';
+import '../../../../core/services/nickname_availability.dart';
 import '../../../running/presentation/providers/running_in_progress_provider.dart';
 import '../../data/datasources/auth_firebase_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -55,6 +56,10 @@ final loginRateLimiterProvider = Provider((ref) => LoginRateLimiter());
 // 이메일 인증 재발송 레이트 리밋 (슬라이딩 윈도우: 5분/3회)
 final emailVerificationRateLimiterProvider =
     Provider((ref) => EmailVerificationRateLimiter());
+
+// 닉네임 Firestore 중복 검사 서비스
+final nicknameAvailabilityProvider =
+    Provider((ref) => NicknameAvailability());
 
 // 현재 로그인된 유저 상태
 class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
@@ -171,6 +176,15 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     String name, {
     bool marketingConsent = false,
   }) async {
+    // 닉네임 중복 사전 검사 — 이미 사용 중이면 가입 진행 차단.
+    // error 케이스는 graceful degrade (인덱스 미배포 등) — 진행 허용.
+    final availability =
+        await _ref.read(nicknameAvailabilityProvider).check(name);
+    if (availability == NicknameAvailabilityResult.taken) {
+      state = const AsyncValue.data(null);
+      return '이미 사용 중인 닉네임입니다';
+    }
+
     state = const AsyncValue.loading();
     final result = await _signUpUseCase(
       SignUpParams(

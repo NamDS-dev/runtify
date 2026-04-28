@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../../core/auth/apple_email.dart';
 import '../../../../core/auth/provider_conflict_message.dart';
+import '../../../../core/services/nickname_availability.dart';
 import '../../../../core/validators/email_validator.dart';
 import '../models/user_model.dart';
 import 'auth_remote_datasource.dart';
@@ -77,6 +78,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
 
       // Firestore에 유저 문서 저장 — 이메일 가입은 미인증 상태로 시작
       // 마케팅 동의는 사용자 선택 → 동의한 경우에만 시점 기록
+      // 닉네임 정규화 키는 중복 검사용 — 가입 시점부터 함께 저장
       final now = DateTime.now();
       final newUser = UserModel(
         id: uid,
@@ -89,6 +91,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
         emailVerified: false,
         marketingConsent: marketingConsent,
         marketingConsentAt: marketingConsent ? now : null,
+        nameNormalized: NicknameAvailability.normalizeForKey(name),
       );
 
       await _usersRef.doc(uid).set(newUser.toFirestore());
@@ -231,6 +234,19 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
     try {
       final firestoreUser = await _getUserFromFirestore(user.uid);
 
+      // 닉네임 정규화 키 backfill — 기존 사용자 문서에 nameNormalized 부재 시 한 번 채움
+      // (가입은 이미 새 필드 포함, 마이그레이션 누락 케이스만 대상)
+      if (firestoreUser.nameNormalized == null && firestoreUser.name.isNotEmpty) {
+        try {
+          await _usersRef.doc(user.uid).update({
+            'nameNormalized':
+                NicknameAvailability.normalizeForKey(firestoreUser.name),
+          });
+        } catch (_) {
+          // backfill 실패는 회원 흐름을 막지 않음
+        }
+      }
+
       // Firebase Auth는 이메일 인증 링크 클릭 후 토큰 갱신 시점에 emailVerified=true가 됨.
       // Firestore 필드가 뒤처져 있으면 즉시 동기화해 이후 호출에서 일관성 확보.
       if (user.emailVerified && !firestoreUser.emailVerified) {
@@ -322,6 +338,7 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
       totalDistance: 0.0,
       emailVerified: emailVerified,
       appleHiddenEmail: appleHiddenEmail,
+      nameNormalized: NicknameAvailability.normalizeForKey(name),
     );
 
     await _usersRef.doc(uid).set(newUser.toFirestore());
