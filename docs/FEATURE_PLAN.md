@@ -25,19 +25,110 @@
   - 검증: `flutter analyze` 0 issues + `flutter test` 93건 pass
   - 파일: `lib/core/utils/friendly_error.dart` (신규), `lib/core/widgets/error_view.dart` (신규), `test/core/utils/friendly_error_test.dart` (신규), 호출부 9개 페이지
 
-> 🚀 **2026-04-28 22시 사용자 결정 — 다음 야간 우선순위**
-> 회원가입 영역 마무리. **Phase 2 (러닝 본질 강화)** 야간 큐 진입.
+> 🚀 **2026-04-28 23시 사용자 결정 — 런닝페이즈 v2 확장 등록**
 > 사용자는 이번 주 내 Android GPS / iOS 백그라운드 크래시 실기기 디버깅 진행 (Phase 1).
+> 런닝페이즈 v1(4건) + v2(8건) + 관측성/이메일 가드/Deep Link 야간 큐.
 >
-> 1. **[관측성] Crashlytics + Analytics 도입** (70분)
-> 2. **[러닝] 일시정지/재시작** (안전 부분만)
-> 3. **[러닝] 자동 일시정지 (정지 감지)**
-> 4. **[러닝] 1km 단위 음성 안내** (TTS)
-> 5. **[러닝] 결과 페이지 통계 강화** (차트)
-> 6. **이메일 인증 잔여 가드 (안전 부분)** — 러닝 트래킹 가드는 실기기 필요해 차후
-> 7. **Deep Link** (Flutter 측만)
+> **런닝페이즈 v1 (이미 등록)**: 일시정지·재시작 / 자동 일시정지 / 1km 음성 안내 / 결과 통계 강화
 >
-> [접근성 항목은 출시 후 운영 단계로 연기됨 — `🟡 기획 확정 대기` 섹션 참조]
+> **런닝페이즈 v2 (신규 등록)**: 워치 미연결 안내 / 자동 저장(crash 복구) / 개인 최고기록(PB) / 랩 기능 / GPS 신호 강도 / 데이터 편집 / 잠금 화면 / 주간·월간 통계
+>
+> **그 외**: Crashlytics+Analytics / 이메일 인증 잔여 가드(안전) / Deep Link
+>
+> [출시 후 운영 단계 항목은 `🟡 기획 확정 대기` 섹션 참조]
+
+- [ ] **[러닝v2] 워치 미연결 안내 (2026-04-28 정책 확정)**
+  - 정책: BLE HRM 페어링 기록 있는데 현재 미연결 → 시작 화면 배너. "이 세션만 그냥 시작" 시 해당 세션 dismiss(다음 세션엔 다시 표시). 자동 재연결은 사용자 클릭 시에만
+  - 구현 체크리스트:
+    - [ ] `running_page.dart` 시작 화면 상단에 `WatchStatusBanner` 위젯 추가 — `ble_device_id` 존재 + BLE 미연결 상태일 때만 표시
+    - [ ] 배너 내용: "🔍 워치 미연결 (이전 페어링: {ble_device_name})" + "심박수 데이터 없이 진행됩니다" + 버튼 2개("연결 시도" / "그냥 시작")
+    - [ ] "연결 시도" → `flutter_blue_plus` 재연결 호출 → 성공 시 배너 숨김, 실패 시 SnackBar
+    - [ ] "그냥 시작" → 세션 내 dismiss 플래그 (Riverpod state, 영속 X)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/running/presentation/pages/running_page.dart`, `lib/features/running/presentation/widgets/watch_status_banner.dart` (신규)
+  - 예상: 30분
+
+- [ ] **[러닝v2] 자동 저장 (crash 복구) (2026-04-28 추가)**
+  - 정책: 30초마다 진행 중 러닝을 SharedPreferences에 백업. 앱 강제 종료/크래시 후 재실행 시 복구 다이얼로그
+  - 구현 체크리스트:
+    - [ ] `RunningProvider`에 30초 주기 Timer로 현재 세션 JSON을 `running_in_progress_backup` 키에 저장
+    - [ ] 정상 종료(`_stopRun`) 또는 사용자가 명시적 cancel 시 백업 키 삭제
+    - [ ] 앱 시작(`main.dart` 또는 home_page initState)에서 백업 키 존재 확인 → 다이얼로그 "이전 러닝이 비정상 종료됐어요. 복구할까요?" + "복구"/"버리기"
+    - [ ] 복구 시 RunningProvider에 상태 주입 + running_page로 이동
+    - [ ] 단위 테스트: 백업 직렬화/역직렬화, 복구 트리거
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/running/presentation/providers/running_provider.dart`, `lib/core/services/running_backup.dart` (신규), `lib/features/home/presentation/pages/home_page.dart`
+  - 예상: 60분
+
+- [ ] **[러닝v2] 개인 최고 기록(PB) 자동 추적 (2026-04-28 추가)**
+  - 정책: 1km / 5km / 10km / 하프(21.0975km) / 풀(42.195km) 5종 거리에 대해 최고 기록 자동 갱신
+  - 구현 체크리스트:
+    - [ ] Firestore `users/{uid}/personal_records/{distance}` 서브컬렉션 — `distanceM`(int), `bestTimeSeconds`(int), `sessionId`(ref), `achievedAt`(timestamp)
+    - [ ] 러닝 저장 시 `PersonalRecordService.checkAndUpdate(session)` 호출 — 5종 거리별로 충분히 달렸는지 확인 + 최고 기록 비교
+    - [ ] 갱신 발생 시 결과 페이지에 🏆 배너 표시 + 갱신된 기록 강조
+    - [ ] Profile에 "개인 최고 기록" 섹션 추가 (5종 표 형태)
+    - [ ] 단위 테스트: 거리별 매칭, 최고 기록 갱신/유지 로직 (5건+)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/core/services/personal_record_service.dart` (신규), `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/features/running/presentation/pages/running_result_page.dart`, `lib/features/auth/presentation/pages/profile_page.dart`
+  - 예상: 70분
+
+- [ ] **[러닝v2] 랩(Lap) 기능 — 1km 자동 분할 (2026-04-28 추가)**
+  - 정책: 1km 단위 자동 랩 — 각 랩의 시간/페이스/심박수 평균 기록. 결과 페이지에 랩 테이블 표시 (이미 일부 있는지 점검)
+  - 구현 체크리스트:
+    - [ ] `LapData` 클래스 신설 (lapNumber, distanceM, durationSec, paceSecPerKm, hrAvg)
+    - [ ] `RunningSessionEntity`/`Model`에 `laps: List<LapData>` 필드 추가 + Firestore 직렬화
+    - [ ] `RunningProvider` 거리 listener에서 1km 통과 시 `_currentLapData` 마감 + 새 랩 시작
+    - [ ] `running_result_page.dart`에 랩 테이블 위젯 추가 (구간 페이스 위젯이 이미 있다면 통합)
+    - [ ] 단위 테스트: 랩 분할 로직, 각 랩 페이스 계산, 마지막 부분 lap (1km 미만)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/running/domain/entities/lap_data.dart` (신규), `lib/features/running/domain/entities/running_session_entity.dart`, `lib/features/running/data/models/running_session_model.dart`, `lib/features/running/presentation/providers/running_provider.dart`, `lib/features/running/presentation/pages/running_result_page.dart`, `lib/features/running/presentation/widgets/lap_table.dart` (신규)
+  - 예상: 60분
+
+- [ ] **[러닝v2] GPS 신호 강도 표시 (2026-04-28 추가)**
+  - 정책: 시작 화면 상단에 GPS 신호 강도 배지 — 좋음(accuracy ≤ 10m) / 보통(≤ 25m) / 약함(> 25m). 약함 상태에서 시작 시도 시 경고 배너 (시작은 가능)
+  - 구현 체크리스트:
+    - [ ] `GpsSignalProvider` 신설 — `geolocator` 의 첫 위치 fix accuracy 기준 분류 (StreamProvider)
+    - [ ] `running_page.dart` 시작 전 화면 상단에 신호 강도 배지 (🟢 좋음 / 🟡 보통 / 🔴 약함)
+    - [ ] 약함 상태에서 시작 버튼 누를 시 다이얼로그 "GPS 신호가 약해 거리·속도 정확도가 낮을 수 있어요. 그래도 시작?" + 확인/취소
+    - [ ] 단위 테스트: accuracy 임계값 분류
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/core/providers/gps_signal_provider.dart` (신규), `lib/features/running/presentation/pages/running_page.dart`
+  - 예상: 50분
+
+- [ ] **[러닝v2] 러닝 데이터 편집 — 제목/메모 (2026-04-28 추가)**
+  - 정책: 러닝 종료 후 또는 기록 상세에서 제목·메모 추가/수정 가능. 검색·필터링 기반
+  - 구현 체크리스트:
+    - [ ] `RunningSessionEntity`/`Model`에 `title: String?`, `memo: String?` 필드 추가 + Firestore 직렬화
+    - [ ] `running_detail_page.dart`에 편집 버튼(연필 아이콘) + EditSessionDialog (제목 30자, 메모 200자, 검증)
+    - [ ] 저장 시 `RunningFirestoreDataSource.updateSession(sessionId, partial)` 호출
+    - [ ] 결과 페이지에서도 저장 직전 "이 러닝에 제목 붙이기" 옵션 (선택, 기본 빈 값)
+    - [ ] 단위 테스트: 검증 (길이 초과, 제어 문자), update 호출
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/running/domain/entities/running_session_entity.dart`, `lib/features/running/data/models/running_session_model.dart`, `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/features/running/presentation/pages/running_detail_page.dart`, `lib/features/running/presentation/widgets/edit_session_dialog.dart` (신규)
+  - 예상: 40분
+
+- [ ] **[러닝v2] 잠금 화면 (실수 터치 방지) (2026-04-28 추가)**
+  - 정책: 러닝 중 화면을 사용자가 잠글 수 있게 — 토글 버튼으로 잠금 활성. 해제는 위로 길게 스와이프(2초+ vertical drag)
+  - 구현 체크리스트:
+    - [ ] `running_page.dart`에 잠금 토글 버튼(우측 상단 자물쇠 아이콘) 추가
+    - [ ] 잠금 상태 시 전체 화면을 `IgnorePointer` + 반투명 오버레이(검은색 60%) + 안내 텍스트 "위로 길게 스와이프하여 잠금 해제"
+    - [ ] `GestureDetector`로 vertical drag 2초+ 감지 시 잠금 해제
+    - [ ] 잠금 중 일시정지·종료 버튼도 비활성 (실수 차단)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/running/presentation/pages/running_page.dart`, `lib/features/running/presentation/widgets/lock_overlay.dart` (신규)
+  - 예상: 50분
+
+- [ ] **[러닝v2] 주간·월간 통계 페이지 (2026-04-28 추가)**
+  - 정책: 캘린더와 별도 통계 페이지 — 주간/월간 탭, 합계 거리·평균 페이스·러닝 횟수·변화 추이 그래프
+  - 구현 체크리스트:
+    - [ ] `running_section_page.dart` 내 탭에 "통계" 추가 (현재 기록/캘린더/목표 → 기록/캘린더/통계/목표)
+    - [ ] `stats_page.dart` 신설 — 주간/월간 토글
+    - [ ] 주간: 최근 4주 데이터 그래프 (거리 라인 차트, fl_chart 활용 — 결과 통계 강화와 패키지 공유)
+    - [ ] 월간: 최근 6개월 데이터 그래프
+    - [ ] 합계 카드: 총 거리, 총 시간, 평균 페이스, 러닝 횟수, 평균 1회 거리
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/running/presentation/pages/running_section_page.dart`, `lib/features/running/presentation/pages/stats_page.dart` (신규), `lib/features/running/presentation/widgets/stats_chart.dart` (신규)
+  - 예상: 80분
 
 - [ ] **[러닝] 일시정지/재시작 기능 (Phase 2 — 2026-04-28 추가)**
   - 현재: 러닝 시작/종료만 가능. 신호등·통화·잠시 멈춤 시점에 일시정지 불가
@@ -313,6 +404,19 @@
   - 현재: 거의 모든 UI에 `Semantics` 미사용. `MediaQuery.textScaler` 대응도 없음
   - 운영 단계 진입 시 다시 검토 — 스크린리더(TalkBack/VoiceOver) 사용자 + 노안 사용자 폰트 확대 대응
   - **현재는 작업하지 않음**. 출시 후 운영 데이터 보고 결정
+
+#### 📦 런닝페이즈 — 출시 후 운영 단계 작업 (2026-04-28 사용자 결정)
+
+- [ ] **[러닝-출시후] 목표 페이스 알림 (R2)** — 시작 전 목표 페이스 입력 → 실제 페이스 ±N초 차이 시 음성/진동
+- [ ] **[러닝-출시후] 운동 종류 선택 (R7)** — 러닝/조깅/걷기/하이킹/사이클 (현재 러닝만)
+- [ ] **[러닝-출시후] 공유 기능 (R9)** — 결과 화면 이미지로 인스타/카카오 공유
+- [ ] **[러닝-출시후] 수동 거리 보정 (R10)** — GPS 부정확 시 사용자 직접 km 입력 보정
+- [ ] **[러닝-출시후] iOS Live Activity / Dynamic Island (R12)** — iOS 16+ 가시성
+- [ ] **[러닝-출시후] 음악 컨트롤 통합 (R13)** — Spotify/Apple Music 위젯
+- [ ] **[러닝-출시후] 러닝 비교 (R14)** — 같은 코스 두 번 달릴 때 비교 (Phase 8 코스 저장과 연동)
+- [ ] **[러닝-출시후] Year in Review (R15)** — 연말 리포트, 마케팅 자산
+- [ ] **[러닝-출시후] 응급 연락처 / 운동 강도 경고 (R16)** — 안전 기능
+- [ ] **[러닝-출시후] Apple HealthKit / Strava / Garmin 동기화 (R17)** — 이미 출시 로드맵에 등록됨
 
 > 📝 **2026-04-28 청소**: 아래 4건은 모두 후속 작업(부분/전체 구현 또는 정책 확정 후 출시 직전 작업)으로 흡수되어 제거됨
 >
