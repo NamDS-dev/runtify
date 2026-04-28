@@ -26,12 +26,74 @@
   - 파일: `lib/core/utils/friendly_error.dart` (신규), `lib/core/widgets/error_view.dart` (신규), `test/core/utils/friendly_error_test.dart` (신규), 호출부 9개 페이지
 
 > 🚀 **2026-04-28 22시 사용자 결정 — 다음 야간 우선순위**
-> 1. **[관측성] Crashlytics + Analytics 도입** (정책 확정, 70분)
-> 2. **이메일 인증 잔여 가드 (안전 부분만)**
-> 3. **Deep Link** (Flutter 측만, 호스팅은 사용자 별도)
+> 회원가입 영역 마무리. **Phase 2 (러닝 본질 강화)** 야간 큐 진입.
+> 사용자는 이번 주 내 Android GPS / iOS 백그라운드 크래시 실기기 디버깅 진행 (Phase 1).
 >
-> 회원가입 영역은 거의 마무리 — 러닝 트래킹 가드는 실기기 필요해 차후 세션
+> 1. **[관측성] Crashlytics + Analytics 도입** (70분)
+> 2. **[러닝] 일시정지/재시작** (안전 부분만)
+> 3. **[러닝] 자동 일시정지 (정지 감지)**
+> 4. **[러닝] 1km 단위 음성 안내** (TTS)
+> 5. **[러닝] 결과 페이지 통계 강화** (차트)
+> 6. **이메일 인증 잔여 가드 (안전 부분)** — 러닝 트래킹 가드는 실기기 필요해 차후
+> 7. **Deep Link** (Flutter 측만)
+>
 > [접근성 항목은 출시 후 운영 단계로 연기됨 — `🟡 기획 확정 대기` 섹션 참조]
+
+- [ ] **[러닝] 일시정지/재시작 기능 (Phase 2 — 2026-04-28 추가)**
+  - 현재: 러닝 시작/종료만 가능. 신호등·통화·잠시 멈춤 시점에 일시정지 불가
+  - 정책: Strava/Nike Run Club 표준 — 일시정지 중에는 GPS·시간·거리 모두 멈춤. 재시작 시 누적 데이터 보존
+  - 구현 체크리스트:
+    - [ ] `RunningProvider`에 `isPaused: bool` state + `pause()` / `resume()` 메서드
+    - [ ] Timer (경과 시간) 일시정지 중 갱신 X
+    - [ ] 누적 거리·페이스·심박수 계산 일시정지 중 정지
+    - [ ] `running_page.dart`에 일시정지 버튼(중앙 큰 버튼) + 재시작 버튼 + 종료 버튼 (3-button 레이아웃)
+    - [ ] 일시정지 상태 표시 — 화면 상단 "⏸ 일시정지 중" 배너
+    - [ ] 단위 테스트: 일시정지/재시작 전후 거리 보존, Timer 일시정지 중 멈춤
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - ⚠️ **GPS stream pause/resume**은 라이프사이클 위험으로 야간 보류 — 일시정지 중에도 stream은 살아있되 누적 로직만 차단 (다음 세션 데스크톱+실기기 작업)
+  - 파일: `lib/features/running/presentation/providers/running_provider.dart`, `lib/features/running/presentation/pages/running_page.dart`
+  - 예상: 70분
+
+- [ ] **[러닝] 자동 일시정지 (정지 감지) (Phase 2 — 2026-04-28 추가)**
+  - 현재: 사용자가 멈춰있어도 시간 계속 가서 페이스가 비현실적으로 느려짐 (예: 횡단보도 30초 기다리면 그 30초도 평균 페이스에 들어감)
+  - 정책: 속도 < 0.5 m/s (시속 1.8km 이하)가 5초 이상 지속되면 자동 일시정지. 속도 > 1.0 m/s 회복 시 자동 재시작
+  - 구현 체크리스트:
+    - [ ] `RunningProvider`에 자동 일시정지 감지 로직 (속도 임계값 + debounce timer)
+    - [ ] 위 #일시정지/재시작 기능과 통합 — 자동·수동 일시정지 동일하게 동작
+    - [ ] 자동 일시정지 시 화면 표시 "⏸ 자동 일시정지 (움직이면 재시작)"
+    - [ ] Profile에 "자동 일시정지 사용" 토글 추가 (기본 ON, 사용자가 끌 수 있음, SharedPreferences 저장)
+    - [ ] 단위 테스트: 임계값 시뮬레이션, 자동 일시정지/재시작 트리거
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/features/running/presentation/providers/running_provider.dart`, `lib/features/running/presentation/pages/running_page.dart`, `lib/features/auth/presentation/pages/profile_page.dart` (토글)
+  - 예상: 60분
+
+- [ ] **[러닝] 1km 단위 음성 안내 (TTS) (Phase 2 — 2026-04-28 추가)**
+  - 현재: 폰 화면 봐야 페이스/거리 확인 가능. 러닝 중에 화면 자주 보는 건 위험·불편
+  - 정책: 매 1km 통과 시점에 음성 안내 — "1km 통과, 페이스 6분 30초, 평균 심박수 152"
+  - 구현 체크리스트:
+    - [ ] `pubspec.yaml`에 `flutter_tts` 패키지 추가
+    - [ ] `lib/core/services/running_voice_announcer.dart` 신설 — 한국어 TTS 초기화 + 마일스톤 발화
+    - [ ] `RunningProvider`의 거리 변화 listener에서 1km 단위 도달 시 announce 호출 (이미 발화한 마일스톤은 중복 호출 X)
+    - [ ] 발화 내용: 거리(N km 통과) + 페이스(분/km) + 평균 심박수(있으면)
+    - [ ] Profile에 "음성 안내" 토글 + 단위 선택(km/mile) — 기본 ON, km
+    - [ ] 단위 테스트: 마일스톤 트리거 (mock TTS로 발화 호출 확인)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `pubspec.yaml`, `lib/core/services/running_voice_announcer.dart` (신규), `lib/features/running/presentation/providers/running_provider.dart`, `lib/features/auth/presentation/pages/profile_page.dart`
+  - 예상: 50분
+
+- [ ] **[러닝] 결과 페이지 통계 강화 (차트) (Phase 2 — 2026-04-28 추가)**
+  - 현재: 결과 페이지에 총 거리·시간·평균 페이스만. 페이스 변화·고도·심박수 분포 시각화 없음
+  - 정책: Strava/Nike 표준 — 페이스 라인 차트(시간축) + 고도 영역 차트 + 심박수 영역 차트. 탭으로 전환
+  - 구현 체크리스트:
+    - [ ] `pubspec.yaml`에 `fl_chart` 패키지 추가
+    - [ ] `running_session_entity.dart`에 `paceSamples`, `elevationSamples`, `heartRateSamples` 필드가 이미 있는지 확인 — 없으면 추가 + 저장 시점에 샘플링 (10초 또는 100m 간격)
+    - [ ] `running_result_page.dart`에 차트 섹션 추가 (3개 탭: 페이스 / 고도 / 심박수)
+    - [ ] 데이터 없는 차트는 "데이터 없음" 빈 상태 표시
+    - [ ] `running_session_entity` 변경 시 `running_firestore_datasource.dart` 직렬화도 동기화
+    - [ ] 단위 테스트: 차트 위젯 렌더링 + 빈 데이터 fallback
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `pubspec.yaml`, `lib/features/running/domain/entities/running_session_entity.dart`, `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/features/running/presentation/pages/running_result_page.dart`, `lib/features/running/presentation/widgets/pace_chart.dart` (신규), `lib/features/running/presentation/widgets/elevation_chart.dart` (신규), `lib/features/running/presentation/widgets/heart_rate_chart.dart` (신규)
+  - 예상: 90분
 
 - [ ] **[관측성] FirebaseCrashlytics + Analytics 도입 (2026-04-28 정책 확정)**
   - 정책: 둘 다 도입 / dev + prod 전체 환경 / `setUserIdentifier(uid)` 그대로 (Firebase uid는 난수 문자열, 추가 해시 X)
@@ -252,44 +314,16 @@
   - 운영 단계 진입 시 다시 검토 — 스크린리더(TalkBack/VoiceOver) 사용자 + 노안 사용자 폰트 확대 대응
   - **현재는 작업하지 않음**. 출시 후 운영 데이터 보고 결정
 
-- [ ] **[인증] 이메일 인증 (Verification) 플로우 (2026-04-20 발견)**
-  - 현재: `signUpWithEmail`에서 계정 생성 후 인증 이메일 자동 발송 없음. 미검증 계정도 전체 기능 접근 가능
-  - 개선: `sendEmailVerification()` 호출 + `emailVerified` 필드를 UserEntity에 추가 + 미인증 상태 UI 배너 + 인증 전 특정 기능(크루 가입, 리워드) 제한
-  - 검토 필요: 어느 기능까지 인증 없이 허용할지(온보딩 UX vs 정책 강도)
-  - 정책 결정: [POLICY.md § 1](POLICY.md#-1-이메일-인증verification-정책)
-  - 파일: `auth_firebase_datasource.dart`, `user_entity.dart`, `user_model.dart`, `login_page.dart`
-  - 예상: 120분
-
-- [ ] **[인증] 연속 로그인 실패 레이트 리밋 (2026-04-20 발견)**
-  - 현재: 실패 에러만 반환. 3회 이상 실패 시 계정 잠금/대기 없음 (Firebase 측 기본 rate limit만)
-  - 개선: 로컬 `SharedPreferences`로 실패 횟수 추적 → 3회 실패 시 60초 대기 강제 + UI 카운트다운
-  - 검토 필요: 서버 측(Firebase 규칙/함수) 강화도 추가할지 — Blaze 요금제 전환 검토
-  - 정책 결정: [POLICY.md § 2](POLICY.md#-2-로그인-실패-레이트-리밋-정책)
-  - 파일: `lib/features/auth/presentation/pages/login_page.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`
-  - 예상: 85분
-
-- [ ] **[인증] 세션 만료 및 토큰 갱신 처리 (2026-04-20 발견)**
-  - 현재: Firebase ID token 만료(1시간)에 대한 명시적 처리 없음. 갱신 자동화/UI 피드백 미구현
-  - 개선: `FirebaseAuth.instance.idTokenChanges()` 스트림 모니터링 → 갱신 실패 시 로그인 리다이렉트. 선택: 30분 유휴 시 강제 재인증
-  - 검토 필요: 유휴 시간 정책 정하기 + 기존 러닝 중에 토큰 만료 시 UX 시나리오
-  - 정책 결정: [POLICY.md § 3](POLICY.md#-3-세션-만료-및-토큰-갱신-정책)
-  - 파일: `auth_provider.dart`, `lib/core/services/session_manager.dart` (신규)
-  - 예상: 95분
+> 📝 **2026-04-28 청소**: 아래 4건은 모두 후속 작업(부분/전체 구현 또는 정책 확정 후 출시 직전 작업)으로 흡수되어 제거됨
+>
+> - ~~[인증] 이메일 인증 (Verification) 플로우 (2026-04-20 발견)~~ → 🟢 "이메일 인증 플로우 — 스캐폴딩 완료" 로 흡수, POLICY § 1 확정
+> - ~~[인증] 연속 로그인 실패 레이트 리밋 (2026-04-20 발견)~~ → 🟢 Phase 1 로컬 완료, Phase 2는 출시 로드맵
+> - ~~[인증] 세션 만료 및 토큰 갱신 처리 (2026-04-20 발견)~~ → 🟢 "세션 만료 및 러닝 중 로그아웃 차단" 으로 흡수
+> - ~~[인증] 계정 탈퇴 플로우 (2026-04-20 발견)~~ → 정책 확정 (POLICY § 4), 출시 로드맵 등록
 
 ### 🔴 사용자 결정 필요 (보안·정책 critical)
 
-- [ ] **[인증] 계정 탈퇴(Account Deletion) 플로우 (2026-04-20 발견)**
-  - 현재: 프로필 페이지에 로그아웃만 있음. 계정 삭제 기능 전무
-  - 개선: "계정 삭제" 버튼 → 확인 다이얼로그 → **비밀번호 재인증** → Firestore 사용자 데이터 삭제 + `FirebaseAuth.currentUser.delete()` + 관련 컬렉션(크루 멤버십, 러닝 세션 등) 처리
-  - 사용자 결정 사항:
-    - 연관 데이터 처리 방식: **완전 삭제 vs 익명화 vs 소프트 삭제**
-    - 크루 리더가 탈퇴 시: 리더 위임 vs 크루 해체 vs 탈퇴 제한
-    - 유예기간: 즉시 삭제 vs 30일 복구 가능
-    - GDPR/CCPA 컴플라이언스 문구 포함 여부
-  - **중요**: App Store 14+ 정책상 필수. 미구현 시 심사 거절 가능성
-  - 정책 결정: [POLICY.md § 4](POLICY.md#-4-계정-탈퇴-정책)
-  - 파일: `profile_page.dart`, `auth_firebase_datasource.dart`, `delete_account_usecase.dart` (신규)
-  - 예상: 110분 + 사용자 정책 결정 시간
+(현재 활성 항목 없음 — 모두 정책 확정 또는 출시 로드맵으로 이관됨)
 
 ---
 
