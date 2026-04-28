@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../running/presentation/providers/running_provider.dart';
 
@@ -164,11 +165,11 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
       loading: () => const Center(
         child: CircularProgressIndicator(color: _colorPrimary),
       ),
-      error: (e, _) => Center(
-        child: Text(
-          '랭킹을 불러오지 못했어요.\n$e',
-          style: const TextStyle(color: Colors.white54),
-          textAlign: TextAlign.center,
+      error: (e, _) => ErrorView(
+        error: e,
+        message: '랭킹을 불러오지 못했어요',
+        onRetry: () => ref.invalidate(
+          regionRankingProvider((level: widget.level, month: widget.month)),
         ),
       ),
       data: (entries) {
