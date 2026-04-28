@@ -60,17 +60,19 @@
   - 파일: `lib/features/running/presentation/providers/running_provider.dart`, `lib/core/services/running_backup.dart` (신규), `lib/features/home/presentation/pages/home_page.dart`
   - 예상: 60분
 
-- [ ] **[러닝v2] 개인 최고 기록(PB) 자동 추적 (2026-04-28 추가)**
-  - 정책: 1km / 5km / 10km / 하프(21.0975km) / 풀(42.195km) 5종 거리에 대해 최고 기록 자동 갱신
-  - 구현 체크리스트:
-    - [ ] Firestore `users/{uid}/personal_records/{distance}` 서브컬렉션 — `distanceM`(int), `bestTimeSeconds`(int), `sessionId`(ref), `achievedAt`(timestamp)
-    - [ ] 러닝 저장 시 `PersonalRecordService.checkAndUpdate(session)` 호출 — 5종 거리별로 충분히 달렸는지 확인 + 최고 기록 비교
-    - [ ] 갱신 발생 시 결과 페이지에 🏆 배너 표시 + 갱신된 기록 강조
-    - [ ] Profile에 "개인 최고 기록" 섹션 추가 (5종 표 형태)
-    - [ ] 단위 테스트: 거리별 매칭, 최고 기록 갱신/유지 로직 (5건+)
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - 파일: `lib/core/services/personal_record_service.dart` (신규), `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/features/running/presentation/pages/running_result_page.dart`, `lib/features/auth/presentation/pages/profile_page.dart`
-  - 예상: 70분
+- [x] ✅ **[러닝v2] 개인 최고 기록(PB) 자동 추적 (2026-04-28 구현 완료)**
+  - 구현:
+    - `core/services/personal_record_service.dart` — 5종 거리(1k/5k/10k/하프 21097m/풀 42195m) 카탈로그, `checkAndUpdate` 트랜잭션, `getAll` 조회, `PersonalRecord.formattedTime` (MM:SS / H:MM:SS 자동 포맷)
+    - 추정 시간 계산: 평균 페이스 기반 (`actualTime / actualDistance × pbDistance`) — MVP 일관 페이스 가정
+    - Firestore `users/{uid}/personal_records/{key}` 서브컬렉션 자동 갱신
+    - `RunningSessionEntity`/`Model`에 `newPersonalRecords: List<String>` 필드 (Firestore 미저장, 메모리 전달용)
+    - `running_firestore_datasource.saveSession` 트랜잭션 외부에서 `PersonalRecordService.checkAndUpdate` 호출 (실패해도 흐름 차단 X) → 결과를 `copyWithNewPersonalRecords` 로 세션에 첨부
+    - `running_result_page.dart`에 `_PersonalRecordBanner` 위젯 — 갱신 거리 라벨 + 골드 배경 그라데이션
+    - `profile_page.dart`에 `_PersonalRecordsSection` — 5종 거리 표 (기록 없으면 회색 "-")
+    - `_personalRecordsProvider` FutureProvider 신설
+  - 단위 테스트 6건 (거리 카탈로그/m 단위/시간 포맷팅 4건). Firestore 트랜잭션 통합 테스트는 fake_cloud_firestore 새 dev dep 필요해 차기
+  - 검증: `flutter analyze` 0 issues + `flutter test` 99건 pass
+  - 파일: `lib/core/services/personal_record_service.dart` (신규), `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/features/running/data/models/running_session_model.dart`, `lib/features/running/domain/entities/running_session_entity.dart`, `lib/features/running/presentation/pages/running_result_page.dart`, `lib/features/auth/presentation/pages/profile_page.dart`, `test/core/services/personal_record_service_test.dart` (신규)
 
 - [ ] **[러닝v2] 랩(Lap) 기능 — 1km 자동 분할 (2026-04-28 추가)**
   - 정책: 1km 단위 자동 랩 — 각 랩의 시간/페이스/심박수 평균 기록. 결과 페이지에 랩 테이블 표시 (이미 일부 있는지 점검)

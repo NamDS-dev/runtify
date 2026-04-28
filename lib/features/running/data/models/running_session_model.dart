@@ -30,6 +30,8 @@ class RunningSessionModel extends RunningSessionEntity {
     super.rankingRegionDong,
     // 신규 획득 배지 (Firestore 미저장, 메모리 전달용)
     super.newBadgeIds,
+    // 신규 갱신 PB (Firestore 미저장, 결과 화면 🏆 배너용)
+    super.newPersonalRecords,
   });
 
   factory RunningSessionModel.fromFirestore(
@@ -119,6 +121,19 @@ class RunningSessionModel extends RunningSessionEntity {
 
   // 배지 ID 목록을 추가한 새 인스턴스 반환
   RunningSessionModel copyWithNewBadges(List<String> badgeIds) {
+    return _copy(newBadgeIds: badgeIds);
+  }
+
+  // PB 갱신 거리 키 목록을 추가한 새 인스턴스 반환
+  RunningSessionModel copyWithNewPersonalRecords(List<String> prKeys) {
+    return _copy(newPersonalRecords: prKeys);
+  }
+
+  // 내부 복제 헬퍼 — 모든 필드 보존, 변경할 부분만 override
+  RunningSessionModel _copy({
+    List<String>? newBadgeIds,
+    List<String>? newPersonalRecords,
+  }) {
     return RunningSessionModel(
       id: id,
       userId: userId,
@@ -143,7 +158,8 @@ class RunningSessionModel extends RunningSessionEntity {
       rankingRegionSi: rankingRegionSi,
       rankingRegionGu: rankingRegionGu,
       rankingRegionDong: rankingRegionDong,
-      newBadgeIds: badgeIds,
+      newBadgeIds: newBadgeIds ?? this.newBadgeIds,
+      newPersonalRecords: newPersonalRecords ?? this.newPersonalRecords,
     );
   }
 }

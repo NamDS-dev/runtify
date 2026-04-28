@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/services/personal_record_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -89,6 +90,10 @@ class ProfilePage extends ConsumerWidget {
 
                 // 배지 그리드 (Phase 6)
                 _BadgesSection(userId: user.id),
+                const SizedBox(height: 20),
+
+                // 개인 최고 기록 (Phase 2 — 2026-04-28)
+                _PersonalRecordsSection(userId: user.id),
                 const SizedBox(height: 20),
 
                 // 홈 지역 설정 (Phase 4)
@@ -917,6 +922,109 @@ class _MarketingConsentToggleState
                 ),
         ],
       ),
+    );
+  }
+}
+
+// ── 개인 최고 기록 섹션 (Phase 2 — 2026-04-28) ────────────────────────
+// users/{uid}/personal_records 서브컬렉션을 읽어 5종 거리 표 형태로 표시.
+// 갱신 안 된 거리는 "기록 없음" 회색.
+final _personalRecordsProvider =
+    FutureProvider.family<List<PersonalRecord>, String>((ref, userId) async {
+  final service = PersonalRecordService();
+  return service.getAll(userId);
+});
+
+class _PersonalRecordsSection extends ConsumerWidget {
+  final String userId;
+
+  const _PersonalRecordsSection({required this.userId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(_personalRecordsProvider(userId));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.colors.cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🏆', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Text(
+                '개인 최고 기록',
+                style: TextStyle(
+                  color: context.colors.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          async.when(
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(8),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+            error: (e, _) => ErrorView(
+              error: e,
+              inline: true,
+              onRetry: () => ref.invalidate(_personalRecordsProvider(userId)),
+            ),
+            data: (records) => _buildTable(context, records),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTable(BuildContext context, List<PersonalRecord> records) {
+    final byKey = {for (final r in records) r.distance.key: r};
+    return Column(
+      children: [
+        for (final pr in PersonalRecordService.distances)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 60,
+                  child: Text(
+                    pr.label,
+                    style: TextStyle(
+                      color: context.colors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    byKey[pr.key]?.formattedTime ?? '-',
+                    style: TextStyle(
+                      color: byKey[pr.key] != null
+                          ? context.colors.textPrimary
+                          : context.colors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: byKey[pr.key] != null
+                          ? FontWeight.w700
+                          : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

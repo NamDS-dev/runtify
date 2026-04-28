@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/services/analytics_events.dart';
+import '../../../../core/services/personal_record_service.dart';
 import '../models/running_session_model.dart';
 import 'badge_firestore_datasource.dart';
 import 'running_mock_datasource.dart';
@@ -273,6 +274,26 @@ class RunningFirestoreDataSource implements RunningDataSource {
       }
     } catch (_) {
       // 배지 체크 실패해도 러닝 저장에 영향 없음
+    }
+
+    // ── 개인 최고 기록(PB) 갱신 시도 ──────────────────────────────
+    // 트랜잭션 외부 비동기. 실패해도 러닝 저장 흐름에 영향 없음.
+    try {
+      final prService = PersonalRecordService(firestore: _firestore);
+      final updated = await prService.checkAndUpdate(
+        userId: session.userId,
+        sessionId: session.id,
+        sessionDistanceKm: session.distanceKm,
+        sessionDurationSeconds: session.durationSeconds,
+        achievedAt: session.endTime ?? session.startTime,
+      );
+      if (updated.isNotEmpty) {
+        session = session.copyWithNewPersonalRecords(
+          updated.map((d) => d.key).toList(growable: false),
+        );
+      }
+    } catch (_) {
+      // PB 체크 실패도 흐름 차단 X
     }
 
     // Analytics — 러닝 저장 성공 시점에 발화 (Firebase 호출 실패해도 silent)

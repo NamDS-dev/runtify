@@ -157,6 +157,14 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
+                    // 개인 최고 기록(PB) 갱신 배너 — 갱신된 거리 있을 때만
+                    if (s.newPersonalRecords.isNotEmpty) ...[
+                      _PersonalRecordBanner(
+                        updatedKeys: s.newPersonalRecords,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
                     // 거리 + 시간 (2열)
                     Row(
                       children: [
@@ -1047,6 +1055,73 @@ class _SplitPacesSection extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 개인 최고 기록(PB) 갱신 배너 (Phase 2 — 2026-04-28) ─────────────────
+// 결과 페이지 상단에 🏆 + 갱신된 거리 라벨 표시
+class _PersonalRecordBanner extends StatelessWidget {
+  final List<String> updatedKeys;
+
+  const _PersonalRecordBanner({required this.updatedKeys});
+
+  @override
+  Widget build(BuildContext context) {
+    // 거리 키 → 한글 라벨 변환 (PersonalRecordService.distances 카탈로그와 동기화)
+    const labelByKey = {
+      '1k': '1km',
+      '5k': '5km',
+      '10k': '10km',
+      'half': '하프',
+      'full': '풀',
+    };
+    final labels = updatedKeys
+        .map((k) => labelByKey[k] ?? k)
+        .toList(growable: false);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFFFFD700).withValues(alpha: 0.18),
+            AppTheme.primary.withValues(alpha: 0.12),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Text('🏆', style: TextStyle(fontSize: 28)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '개인 최고 기록 갱신!',
+                  style: TextStyle(
+                    color: Color(0xFFFFD700),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  labels.join(' · '),
+                  style: TextStyle(
+                    color: context.colors.textPrimary,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

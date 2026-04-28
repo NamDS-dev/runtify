@@ -51,6 +51,10 @@ class RunningSessionEntity extends Equatable {
   // 이번 세션에서 새로 획득한 배지 ID 목록 (Firestore 미저장, 결과 화면 팝업용)
   final List<String> newBadgeIds;
 
+  // 이번 세션에서 갱신된 PB 거리 키 목록 ('1k'/'5k'/'10k'/'half'/'full')
+  // Firestore 미저장, 결과 화면 🏆 배너 표시용
+  final List<String> newPersonalRecords;
+
   const RunningSessionEntity({
     required this.id,
     required this.userId,
@@ -76,6 +80,7 @@ class RunningSessionEntity extends Equatable {
     this.rankingRegionGu,
     this.rankingRegionDong,
     this.newBadgeIds = const [],
+    this.newPersonalRecords = const [],
   });
 
   bool get isCompleted => endTime != null;
