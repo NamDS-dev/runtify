@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/running_firestore_datasource.dart';
 import '../../data/models/running_session_model.dart';
@@ -26,7 +27,7 @@ class RunningSectionPage extends ConsumerWidget {
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
+      error: (e, _) => Scaffold(body: ErrorView(error: e)),
       data: (user) {
         if (user == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -340,7 +341,7 @@ class _HistoryTabState extends ConsumerState<_HistoryTab> {
             // 이번 달 통계 요약
             runsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('$e'),
+              error: (e, _) => ErrorView(error: e, inline: true),
               data: (sessions) => StatsOverviewWidget(sessions: sessions),
             ),
             const SizedBox(height: 16),
@@ -357,7 +358,7 @@ class _HistoryTabState extends ConsumerState<_HistoryTab> {
             const SizedBox(height: 12),
             runsAsync.when(
               loading: () => const CircularProgressIndicator(),
-              error: (e, _) => Text('$e'),
+              error: (e, _) => ErrorView(error: e, inline: true),
               data: (sessions) => sessions.isEmpty
                   ? Text(
                       '아직 러닝 기록이 없어요. 첫 러닝을 시작해보세요!',
@@ -512,7 +513,7 @@ class _CalendarMonthView extends ConsumerWidget {
 
     return sessionsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('오류: $e')),
+      error: (e, _) => ErrorView(error: e),
       data: (sessions) {
         // 이 달에 러닝한 날짜 집합 (day만 추출)
         final runDays = sessions

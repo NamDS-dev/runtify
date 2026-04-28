@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/content_validator.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/crew_entity.dart';
 import '../../domain/entities/event_entity.dart';
@@ -43,7 +44,7 @@ class CrewEventPage extends ConsumerWidget {
           : null,
       body: eventsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => ErrorView(error: e),
         data: (events) {
           if (events.isEmpty) {
             return Center(

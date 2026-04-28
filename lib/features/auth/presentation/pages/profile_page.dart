@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../../running/domain/entities/badge_entity.dart';
 import '../../../running/presentation/providers/badge_provider.dart';
@@ -21,7 +22,7 @@ class ProfilePage extends ConsumerWidget {
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
+      error: (e, _) => Scaffold(body: ErrorView(error: e)),
       data: (user) {
         if (user == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {

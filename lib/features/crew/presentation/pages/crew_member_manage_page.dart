@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../domain/entities/crew_entity.dart';
 import '../providers/crew_provider.dart';
 
@@ -69,7 +70,7 @@ class CrewMemberManagePage extends ConsumerWidget {
             // ── 현재 멤버 섹션 ──────────────────────────────────
             membersAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('멤버 조회 실패: $e'),
+              error: (e, _) => ErrorView(error: e, inline: true),
               data: (members) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

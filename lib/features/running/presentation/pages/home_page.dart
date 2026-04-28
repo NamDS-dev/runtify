@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../crew/presentation/providers/crew_provider.dart';
 import '../../data/datasources/health_connect_datasource.dart';
@@ -22,7 +23,7 @@ class HomePage extends ConsumerWidget {
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
+      error: (e, _) => Scaffold(body: ErrorView(error: e)),
       data: (user) {
         // 로그인 안 된 경우 로그인 페이지로
         if (user == null) {
@@ -111,7 +112,7 @@ class HomePage extends ConsumerWidget {
                   runsAsync.when(
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Text('$e'),
+                    error: (e, _) => ErrorView(error: e, inline: true),
                     data: (sessions) => StatsOverviewWidget(sessions: sessions),
                   ),
                   const SizedBox(height: 16),

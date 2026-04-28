@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../domain/entities/course_entity.dart';
 import '../providers/course_provider.dart';
 
@@ -29,7 +30,7 @@ class CourseDetailPage extends ConsumerWidget {
       ),
       body: courseAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('오류: $e')),
+        error: (e, _) => ErrorView(error: e),
         data: (course) {
           if (course == null) {
             return const Center(child: Text('코스를 찾을 수 없습니다'));

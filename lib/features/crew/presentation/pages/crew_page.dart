@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/crew_entity.dart';
 import '../providers/crew_provider.dart';
@@ -19,7 +20,7 @@ class CrewPage extends ConsumerWidget {
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
+      error: (e, _) => Scaffold(body: ErrorView(error: e)),
       data: (user) {
         if (user == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -40,18 +41,9 @@ class CrewPage extends ConsumerWidget {
             onRefresh: () async => ref.invalidate(crewsProvider),
             child: crewsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('오류: $e', style: TextStyle(color: context.colors.textSecondary)),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () => ref.invalidate(crewsProvider),
-                      child: const Text('다시 시도'),
-                    ),
-                  ],
-                ),
+              error: (e, _) => ErrorView(
+                error: e,
+                onRetry: () => ref.invalidate(crewsProvider),
               ),
               data: (crews) {
                 // 내 크루 찾기

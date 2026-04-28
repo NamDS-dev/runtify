@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/challenge_entity.dart';
 import '../../domain/entities/crew_entity.dart';
@@ -37,7 +38,7 @@ class _CrewChallengePageState extends ConsumerState<CrewChallengePage> {
     return authState.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
+      error: (e, _) => Scaffold(body: ErrorView(error: e)),
       data: (user) {
         if (user == null) return const Scaffold(body: SizedBox());
 

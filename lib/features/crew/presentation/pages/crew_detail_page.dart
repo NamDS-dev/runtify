@@ -6,6 +6,7 @@ import '../../../../core/auth/require_email_verified.dart';
 import '../../../../core/constants/korea_regions.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/content_validator.dart';
+import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/crew_entity.dart';
 import '../../domain/entities/post_entity.dart';
@@ -28,7 +29,7 @@ class CrewDetailPage extends ConsumerWidget {
 
     return authState.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
+      error: (e, _) => Scaffold(body: ErrorView(error: e)),
       data: (user) {
         if (user == null) return const Scaffold(body: SizedBox());
 
@@ -965,7 +966,7 @@ class _CrewFeedTab extends ConsumerWidget {
 
     return postsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e', style: TextStyle(color: context.colors.textSecondary))),
+      error: (e, _) => ErrorView(error: e, inline: true),
       data: (posts) {
         if (posts.isEmpty) {
           return Center(

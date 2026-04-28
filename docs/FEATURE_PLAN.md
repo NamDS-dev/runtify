@@ -15,6 +15,16 @@
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
 
+- [x] ✅ **[온보딩/UX] AsyncValue 에러 메시지 정리 + 공통 ErrorView 위젯 (2026-04-28 야간 발견·구현)**
+  - 발견: 16개 페이지에서 `Text('$e')` / `Text('오류: $e')` 형태로 raw 예외 toString() 노출 — 보안(Stack trace 누출) + UX(한국어 사용자 친화 X) 갭
+  - 구현:
+    - `lib/core/utils/friendly_error.dart` — Object/Exception 패턴 매칭으로 한국어 사용자 친화 메시지 변환 (네트워크/타임아웃/권한/not-found/인덱스 미배포/unavailable + generic 폴백)
+    - `lib/core/widgets/error_view.dart` — 공통 위젯 (icon + 메시지 + optional 다시 시도 버튼). `inline: true` 옵션으로 컴팩트 변형
+    - 16곳 모두 ErrorView 로 교체 (course_list/course_detail/profile/crew_detail/crew_event/crew_member_manage/crew_page/crew_challenge/running_section[3건]/home[2건])
+  - 단위 테스트 7건 (각 카테고리 매칭 + generic 폴백 + raw 텍스트 노출 차단 검증)
+  - 검증: `flutter analyze` 0 issues + `flutter test` 93건 pass
+  - 파일: `lib/core/utils/friendly_error.dart` (신규), `lib/core/widgets/error_view.dart` (신규), `test/core/utils/friendly_error_test.dart` (신규), 호출부 9개 페이지
+
 > 🚀 **2026-04-28 야간 우선순위 (사용자 결정)**
 > 1. **세션 만료 + 러닝 중 로그아웃 차단** (60분, line 138~)
 > 2. 이메일 인증 잔여 가드 + 닉네임 중복 검사
