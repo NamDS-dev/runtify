@@ -35,6 +35,7 @@ void main() {
         overrides: [
           authProvider.overrideWith(
             (ref) => _StubAuthNotifier(
+              ref,
               user == null
                   ? const AsyncValue<UserEntity?>.data(null)
                   : AsyncValue<UserEntity?>.data(user),
@@ -85,8 +86,9 @@ void main() {
 // AuthNotifier 의 의존 객체를 모두 무동작으로 채운 stub 노티파이어.
 // _checkCurrentUser 가 _dataSource.getCurrentUser() 를 호출하지만 _NoOpDataSource 가 null 을 반환해 안전.
 class _StubAuthNotifier extends AuthNotifier {
-  _StubAuthNotifier(AsyncValue<UserEntity?> initial)
+  _StubAuthNotifier(Ref ref, AsyncValue<UserEntity?> initial)
       : super(
+          ref: ref,
           dataSource: _NoOpDataSource(),
           signInUseCase: SignInUseCase(_NoOpRepository()),
           signUpUseCase: SignUpUseCase(_NoOpRepository()),

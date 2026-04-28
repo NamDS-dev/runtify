@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../../core/router/auth_router_state.dart';
 import '../../../../core/services/email_verification_rate_limiter.dart';
 import '../../../../core/services/login_rate_limiter.dart';
+import '../../../running/presentation/providers/running_in_progress_provider.dart';
 import '../../data/datasources/auth_firebase_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
@@ -59,14 +63,21 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
   final SignUpUseCase _signUpUseCase;
   final ForgotPasswordUseCase _forgotPasswordUseCase;
   final LoginRateLimiter _rateLimiter;
+  // 러닝 진행 중 여부 조회용 — idTokenChanges 리스너에서 정책 § 3 가드 적용
+  final Ref _ref;
+
+  // Firebase Auth 토큰/세션 변화 구독 — 러닝 중 강제 로그아웃 차단
+  StreamSubscription<User?>? _idTokenSubscription;
 
   AuthNotifier({
+    required Ref ref,
     required AuthRemoteDataSource dataSource,
     required SignInUseCase signInUseCase,
     required SignUpUseCase signUpUseCase,
     required ForgotPasswordUseCase forgotPasswordUseCase,
     required LoginRateLimiter rateLimiter,
-  })  : _dataSource = dataSource,
+  })  : _ref = ref,
+        _dataSource = dataSource,
         _signInUseCase = signInUseCase,
         _signUpUseCase = signUpUseCase,
         _forgotPasswordUseCase = forgotPasswordUseCase,
@@ -77,6 +88,43 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
       authRouterStateNotifier.value = next.valueOrNull;
     });
     _checkCurrentUser();
+    _subscribeToFirebaseAuthChanges();
+  }
+
+  // Firebase Auth idTokenChanges 구독 — 토큰 만료/갱신 실패로 user=null 이 되면
+  // 정책 § 3 에 따라 러닝 중에는 강제 로그아웃을 무시한다.
+  // 테스트 환경에서 Firebase 미초기화로 throw 시 listener 등록을 건너뛴다.
+  void _subscribeToFirebaseAuthChanges() {
+    final Stream<User?> stream;
+    try {
+      stream = FirebaseAuth.instance.idTokenChanges();
+    } catch (_) {
+      return;
+    }
+    _idTokenSubscription = stream.listen((firebaseUser) {
+      if (firebaseUser != null) {
+        // 정상 토큰 갱신 또는 로그인. Firestore 동기화는 별도 경로(refreshUser/getCurrentUser)에서 처리.
+        return;
+      }
+      // user==null → 잠재 로그아웃. 러닝 중이면 차단.
+      final isRunning = _ref.read(runningInProgressProvider);
+      if (isRunning) {
+        debugPrint(
+          '[AuthNotifier] idTokenChanges → null but running in progress, suppressing logout',
+        );
+        return;
+      }
+      // 러닝 중이 아니면 정상 로그아웃 반영
+      if (state.valueOrNull != null) {
+        state = const AsyncValue.data(null);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _idTokenSubscription?.cancel();
+    super.dispose();
   }
 
   // 앱 시작 시 Firebase Auth 로그인 상태 확인
@@ -244,6 +292,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
 
 final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<UserEntity?>>(
   (ref) => AuthNotifier(
+    ref: ref,
     dataSource: ref.read(authRemoteDataSourceProvider),
     signInUseCase: ref.read(signInUseCaseProvider),
     signUpUseCase: ref.read(signUpUseCaseProvider),

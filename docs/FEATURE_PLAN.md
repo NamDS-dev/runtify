@@ -143,19 +143,23 @@
     - [ ] **"러닝 시작 1회 유예" 상태 머신** — 차기 세션 (실기기 필요)
   - 파일(완료): `lib/features/auth/domain/entities/user_entity.dart`, `data/models/user_model.dart`, `data/datasources/auth_firebase_datasource.dart`, `lib/core/services/email_verification_cooldown.dart` (신규), `presentation/providers/auth_provider.dart`, `presentation/widgets/verify_email_dialog.dart` (신규), `test/core/services/email_verification_cooldown_test.dart` (신규)
 
-- [ ] **[인증] 세션 만료 및 러닝 중 로그아웃 차단 (2026-04-23 정책 확정)**
-  - 정책: [POLICY.md § 3](POLICY.md#-3-세션-만료-및-토큰-갱신-정책) — 러닝 중 로그아웃 X, 종료 시점 저장 + 로컬 큐잉
-  - 구현 체크리스트:
-    - [ ] `RunningProvider`에 `isRunningInProgress: bool` getter/state 노출
-    - [ ] `AuthNotifier`의 `idTokenChanges()` 리스너에서 `isRunningInProgress == true` 시 로그아웃 트리거 무시 (로그만 찍기)
-    - [ ] `running_firestore_datasource.dart`의 `saveSession`이 현재 종료 버튼 1회 저장인지 점검 + 아니면 수정 (중간 저장 제거)
-    - [ ] 저장 실패 시 로컬 큐 보관 — **`SharedPreferences` + JSON 직렬화 확정** (2026-04-26 결정). 큐 키 `running_sync_queue_v1`, 배열 형태 (각 항목: 세션 JSON + 시도 횟수 + 마지막 시도 시각)
-    - [ ] 앱 재시작 또는 온라인 복귀 시 큐 자동 flush (`ConnectivityPlus` 스트림 구독)
-    - [ ] 홈 상단에 "동기화 대기 N건" 배너 — 큐가 비어있지 않을 때만 표시
-    - [ ] **이메일 인증 가드와 동일 큐 공유** — 미인증으로 인한 차단도 같은 큐에 enqueue. flush 시점에 인증 상태 재확인 후 미인증이면 보류 유지
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과 (큐 enqueue/flush/재시도 단위 테스트 포함)
-  - 파일: `lib/features/running/presentation/providers/running_provider.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`, `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/core/services/running_sync_queue.dart` (신규)
-  - 예상: 60분
+- [ ] **[인증] 세션 만료 및 러닝 중 로그아웃 차단 (2026-04-28 부분 구현)**
+  - 정책: [POLICY.md § 3] — 러닝 중 로그아웃 X, 종료 시점 저장 + 로컬 큐잉
+  - ✅ 야간 완료 (2026-04-28):
+    - [x] `runningInProgressProvider` 신설 (StateProvider<bool>) — 러닝 진행 상태 전역 노출
+    - [x] `AuthNotifier`에 `idTokenChanges` 리스너 + `Ref` 주입 — user==null 이벤트 시 `runningInProgressProvider` 읽어 러닝 중이면 강제 로그아웃 무시 (debugPrint로 발생 기록)
+    - [x] `RunningSyncQueue` 신설 (`lib/core/services/running_sync_queue.dart`) — SharedPreferences + JSON 직렬화. enqueue/peekAll/length/ackByEnqueuedAt/bumpAttempt/clear 인터페이스. 큐 키 `running_sync_queue_v1`
+    - [x] StreamSubscription dispose 처리 + Firebase 미초기화(테스트 환경) 시 listener 미등록 폴백
+    - [x] 단위 테스트 7건 (RunningSyncQueue 초기/enqueue/attempts/bump/ack/clear/직렬화 라운드트립)
+    - [x] `flutter analyze` 0 issues + `flutter test` 82건 pass
+  - ⏸ 차기 세션:
+    - [ ] **`running_page.dart` hookup** — initState 에서 `ref.read(runningInProgressProvider.notifier).state = true`, dispose/`_stopRun` 끝에서 false. GPS/라이프사이클 영역이라 야간 자동 수정 금지 → 데스크톱 세션
+    - [ ] `running_firestore_datasource.dart` saveSession 점검 (단일 호출 확인)
+    - [ ] saveSession 실패 시 RunningSyncQueue.enqueue 호출 (running_page._stopRun 흐름 — 위 hookup과 동시 작업)
+    - [ ] **앱 재시작 / 온라인 복귀 시 자동 flush** — `connectivity_plus` 새 의존성 도입 결정 필요 (🟡 새 의존성)
+    - [ ] 홈 상단 "동기화 대기 N건" 배너 위젯
+    - [ ] 이메일 인증 가드와 큐 공유 — flush 시점에 emailVerified 재확인 → 미인증이면 보류 유지
+  - 파일(완료): `lib/features/running/presentation/providers/running_in_progress_provider.dart` (신규), `lib/features/auth/presentation/providers/auth_provider.dart`, `lib/core/services/running_sync_queue.dart` (신규), `test/core/services/running_sync_queue_test.dart` (신규)
 
 - [x] ✅ **[인증] 로그인 실패 레이트 리밋 — Phase 1 로컬 (2026-04-23 구현 완료)**
   - 구현: `core/services/login_rate_limiter.dart` 신설 — maxAttempts(3) + lockDuration(60s), SharedPreferences 키는 정규화된 이메일의 hashCode(36진수)로 난독화. `AuthNotifier.signIn`에서 호출 전 사전 잠금 체크(즉시 차단), 실패 시 `recordFailure`, 성공 시 `resetOnSuccess`. 잠금 만료 후 자동 카운터 정리. 만료 시간 오차를 고려해 첫 잠금 안내 문구를 정확한 잔여 초수로 노출.
