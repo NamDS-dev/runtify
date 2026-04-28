@@ -15,6 +15,13 @@
 
 ### 🟢 자동 구현 대상 (다음 야간 작업 우선순위)
 
+> 🚀 **2026-04-28 야간 우선순위 (사용자 결정)**
+> 1. **세션 만료 + 러닝 중 로그아웃 차단** (60분, line 138~)
+> 2. 이메일 인증 잔여 가드 + 닉네임 중복 검사
+> 3. Deep Link
+>
+> 회원가입 영역은 거의 마무리 단계 — 4건 미완 모두 처리 후 다음 영역(러닝/크루) 진입 결정 예정
+
 - [x] ✅ **[입력 검증] 닉네임 규칙 강화 — 욕설·사칭·이모지·grapheme (2026-04-28 부분 구현)**
   - ✅ 완료: 욕설/비속어/운영진 사칭/숫자만/이모지만/grapheme 길이 — 모두 sync 검증으로 `NameValidator` 에 통합
     - 한국어 욕설 + 영문 욕설 + 우회 시도(특수문자 사이) 모두 매칭 — `_compactForMatching` 으로 소문자 + 공백/특수문자 제거 후 부분 매치
@@ -23,7 +30,10 @@
     - grapheme 길이 측정 (`String.characters.length`) — 🔥 단일 = 1자로 카운트, "러너🔥" 4자
     - 욕설/예약어 리스트는 코드 임베드 (assets JSON 이관은 운영 단계로)
     - 단위 테스트 26건 (기본 규칙/normalize/grapheme/욕설/사칭/숫자만/이모지만)
-  - ⏸ 차기 세션: **Firestore 중복 검사** (`NicknameAvailability` 서비스 + `nameNormalized` 필드 + 가입 직전 비동기 검사 + 기존 사용자 backfill) — Firestore 인덱스 의존성 + 사용자 직접 콘솔 확인 필요해 별도 분리
+  - ⏸ 차기 세션: **Firestore 중복 검사** (`NicknameAvailability` 서비스 + `nameNormalized` 필드 + 가입 직전 비동기 검사 + 기존 사용자 backfill)
+    - **인덱스 처리 방식 (2026-04-28 결정)**: `firestore.indexes.json`에 `users.nameNormalized` 단일 필드 인덱스 명시적 추가 → 사용자가 `firebase deploy --only firestore:indexes` 직접 실행 (야간 PM은 indexes.json 변경 금지)
+    - 야간 작업 범위: NicknameAvailability 서비스 코드 + `nameNormalized` 필드 추가 + 가입 흐름 통합 + backfill + 단위 테스트
+    - 사용자 직접 작업: indexes.json 수정 PR 검토 + `firebase deploy` 실행 (수정 자체는 야간이 만들고, deploy만 사용자 직접)
   - 파일: `lib/core/validators/name_validator.dart`, `pubspec.yaml` (`characters` 명시 의존), `test/core/validators/name_validator_test.dart` (확장)
   - 검증: `flutter analyze` 0 issues + `flutter test` 75건 pass
 
