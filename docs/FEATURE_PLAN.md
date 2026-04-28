@@ -227,6 +227,19 @@
 
 ### 🟡 기획 확정 대기 (사용자 검토 후 구현)
 
+- [ ] **[접근성] Semantics 라벨 일괄 추가 + textScaler 대응 (2026-04-28 야간 오딧 발견)**
+  - 현재: 거의 모든 UI에 `Semantics` 미사용. `IconButton` / `GestureDetector` / 이모지 텍스트 등 스크린리더 사용자에겐 레이블 없음. `MediaQuery.textScaler` 대응도 없어 시스템 폰트 확대 시 레이아웃 깨짐 우려
+  - 개선 후보:
+    - 액션 버튼 (러닝 시작/종료, 크루 가입, 약관 자세히 보기 등)에 명시적 `tooltip` + `Semantics(label: ...)` 부여
+    - 스코어/메달/이모지 시각 요소에 텍스트 대안 제공
+    - `MediaQuery.textScalerOf(context)` 적용한 위젯 테스트 추가 (큰 폰트에서 레이아웃 무너지지 않는지)
+  - 결정 필요:
+    - [ ] 우선순위 — 대상 화면 (로그인 / 홈 / 러닝 / 프로필 우선?) 또는 일괄
+    - [ ] 라벨 가이드 — 한국어 명사구 vs 동사구 (예: "크루 가입 신청" vs "크루 가입 신청 버튼")
+    - [ ] textScaler 최대 배율 정책 (1.3x 까지만? 시스템 그대로 따르되 overflow 시 ellipsis?)
+  - 결정 후 작업: 화면별로 `Semantics` 추가 + 골든 테스트 또는 a11y 검증 (TalkBack/VoiceOver 실기기 확인 권장). 예상 120분+ 화면 수에 비례
+  - **야간 제약**: 화면 수가 많고 a11y 검증은 실기기 권장 — 1차 결정 + 가이드라인 후 야간 큐 진입 가능
+
 - [ ] **[관측성] FirebaseCrashlytics + Analytics 도입 (2026-04-28 야간 오딧 발견)**
   - 현재: `debugPrint` 만 사용. Release 빌드에서는 모든 로그·에러 정보가 사라짐. 크래시 발생해도 추적 불가
   - 개선: `firebase_crashlytics` 추가 → uncaught Flutter/Native 에러 자동 수집 + custom log/사용자 ID/세션 정보. `firebase_analytics` 로 핵심 이벤트 트래킹(가입/로그인/러닝 시작/저장/크루 가입 등)
