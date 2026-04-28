@@ -25,12 +25,31 @@
   - 검증: `flutter analyze` 0 issues + `flutter test` 93건 pass
   - 파일: `lib/core/utils/friendly_error.dart` (신규), `lib/core/widgets/error_view.dart` (신규), `test/core/utils/friendly_error_test.dart` (신규), 호출부 9개 페이지
 
-> 🚀 **2026-04-28 야간 우선순위 (사용자 결정)**
-> 1. **세션 만료 + 러닝 중 로그아웃 차단** (60분, line 138~)
-> 2. 이메일 인증 잔여 가드 + 닉네임 중복 검사
-> 3. Deep Link
+> 🚀 **2026-04-28 22시 사용자 결정 — 다음 야간 우선순위**
+> 1. **[관측성] Crashlytics + Analytics 도입** (정책 확정, 70분)
+> 2. **이메일 인증 잔여 가드 (안전 부분만)**
+> 3. **Deep Link** (Flutter 측만, 호스팅은 사용자 별도)
 >
-> 회원가입 영역은 거의 마무리 단계 — 4건 미완 모두 처리 후 다음 영역(러닝/크루) 진입 결정 예정
+> 회원가입 영역은 거의 마무리 — 러닝 트래킹 가드는 실기기 필요해 차후 세션
+> [접근성 항목은 출시 후 운영 단계로 연기됨 — `🟡 기획 확정 대기` 섹션 참조]
+
+- [ ] **[관측성] FirebaseCrashlytics + Analytics 도입 (2026-04-28 정책 확정)**
+  - 정책: 둘 다 도입 / dev + prod 전체 환경 / `setUserIdentifier(uid)` 그대로 (Firebase uid는 난수 문자열, 추가 해시 X)
+  - 구현 체크리스트:
+    - [ ] `pubspec.yaml`에 `firebase_crashlytics`, `firebase_analytics` 추가 + `flutter pub get`
+    - [ ] `main.dart`: `FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError` + `PlatformDispatcher.instance.onError`로 Dart 비동기 에러도 캐치
+    - [ ] `AuthNotifier`에서 로그인 성공 시 `FirebaseCrashlytics.instance.setUserIdentifier(user.uid)` + `FirebaseAnalytics.instance.setUserId(id: user.uid)` 호출. 로그아웃 시 둘 다 `null`
+    - [ ] Analytics 이벤트 카탈로그 신설 (`lib/core/services/analytics_events.dart`):
+      - `sign_up` (provider), `login` (provider), `email_verification_sent`, `running_started`, `running_saved` (distance_km, duration_seconds), `crew_joined`, `crew_left`, `password_reset_requested`
+      - 이벤트는 enum/상수로 정의해 오타 방지
+    - [ ] 가입/로그인/러닝 시작/러닝 저장/크루 가입·탈퇴/인증 메일 발송에서 `AnalyticsEvents.log(...)` 호출
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - **⚠️ 사용자 직접 작업 (야간 후 알림)**:
+    - Android: `android/app/build.gradle`에 `com.google.firebase.crashlytics` 플러그인 추가 + `google-services.json` 최신본 확인 (네이티브 편집 = 야간 금지)
+    - iOS: Xcode `Runner.xcworkspace`에서 Crashlytics Run Script Phase 등록
+    - 검증: 의도 크래시 발생시켜 Firebase 콘솔 도착 확인
+  - 파일: `pubspec.yaml`, `lib/main.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`, `lib/core/services/analytics_events.dart` (신규), 이벤트 호출부 6개 영역
+  - 예상: 70분 (Flutter 측), 네이티브는 사용자 별도
 
 - [x] ✅ **[입력 검증] 닉네임 규칙 강화 — 욕설·사칭·이모지·grapheme + Firestore 중복 검사 (2026-04-28 구현 완료)**
   - sync 검증 (이전 야간 완료): 욕설/비속어/운영진 사칭/숫자만/이모지만/grapheme 길이 — 모두 `NameValidator`
@@ -227,29 +246,11 @@
 
 ### 🟡 기획 확정 대기 (사용자 검토 후 구현)
 
-- [ ] **[접근성] Semantics 라벨 일괄 추가 + textScaler 대응 (2026-04-28 야간 오딧 발견)**
-  - 현재: 거의 모든 UI에 `Semantics` 미사용. `IconButton` / `GestureDetector` / 이모지 텍스트 등 스크린리더 사용자에겐 레이블 없음. `MediaQuery.textScaler` 대응도 없어 시스템 폰트 확대 시 레이아웃 깨짐 우려
-  - 개선 후보:
-    - 액션 버튼 (러닝 시작/종료, 크루 가입, 약관 자세히 보기 등)에 명시적 `tooltip` + `Semantics(label: ...)` 부여
-    - 스코어/메달/이모지 시각 요소에 텍스트 대안 제공
-    - `MediaQuery.textScalerOf(context)` 적용한 위젯 테스트 추가 (큰 폰트에서 레이아웃 무너지지 않는지)
-  - 결정 필요:
-    - [ ] 우선순위 — 대상 화면 (로그인 / 홈 / 러닝 / 프로필 우선?) 또는 일괄
-    - [ ] 라벨 가이드 — 한국어 명사구 vs 동사구 (예: "크루 가입 신청" vs "크루 가입 신청 버튼")
-    - [ ] textScaler 최대 배율 정책 (1.3x 까지만? 시스템 그대로 따르되 overflow 시 ellipsis?)
-  - 결정 후 작업: 화면별로 `Semantics` 추가 + 골든 테스트 또는 a11y 검증 (TalkBack/VoiceOver 실기기 확인 권장). 예상 120분+ 화면 수에 비례
-  - **야간 제약**: 화면 수가 많고 a11y 검증은 실기기 권장 — 1차 결정 + 가이드라인 후 야간 큐 진입 가능
-
-- [ ] **[관측성] FirebaseCrashlytics + Analytics 도입 (2026-04-28 야간 오딧 발견)**
-  - 현재: `debugPrint` 만 사용. Release 빌드에서는 모든 로그·에러 정보가 사라짐. 크래시 발생해도 추적 불가
-  - 개선: `firebase_crashlytics` 추가 → uncaught Flutter/Native 에러 자동 수집 + custom log/사용자 ID/세션 정보. `firebase_analytics` 로 핵심 이벤트 트래킹(가입/로그인/러닝 시작/저장/크루 가입 등)
-  - 결정 필요:
-    - [ ] 새 의존성 2개(`firebase_crashlytics` + `firebase_analytics`) 도입 허용 여부
-    - [ ] Crashlytics 활성 시점: 개발 빌드(dev 환경) + 프로덕션 모두 / 프로덕션만
-    - [ ] PII 정책: `setUserId(uid)` 사용 vs hash 처리 / 사용자 이메일·닉네임 절대 미수집 명시
-    - [ ] Analytics 이벤트 카탈로그 1차 정의 (가입 / 로그인 / 러닝 시작 / 러닝 저장 / 크루 가입 / 인증 메일 발송 / 결제 — 향후)
-  - 결정 후 작업: `pubspec.yaml` 추가 + `main.dart`에서 `FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError` + Native 설정(google-services / GoogleService-Info.plist 변경 — 사용자 직접). 예상 90분 + Native 검증
-  - **야간 제약**: 새 의존성 2건 + 네이티브 편집 — 모두 야간 자동 구현 금지
+- [ ] **[접근성] Semantics 라벨 + textScaler 대응 — 운영 단계로 연기 (2026-04-28 결정)**
+  - 결정: **출시 후 사용자 1만 명 도달 시점에 시작** — MVP에서는 도입 안 함
+  - 현재: 거의 모든 UI에 `Semantics` 미사용. `MediaQuery.textScaler` 대응도 없음
+  - 운영 단계 진입 시 다시 검토 — 스크린리더(TalkBack/VoiceOver) 사용자 + 노안 사용자 폰트 확대 대응
+  - **현재는 작업하지 않음**. 출시 후 운영 데이터 보고 결정
 
 - [ ] **[인증] 이메일 인증 (Verification) 플로우 (2026-04-20 발견)**
   - 현재: `signUpWithEmail`에서 계정 생성 후 인증 이메일 자동 발송 없음. 미검증 계정도 전체 기능 접근 가능
