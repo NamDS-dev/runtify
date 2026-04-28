@@ -186,23 +186,20 @@
   - 파일: `pubspec.yaml`, `lib/features/running/domain/entities/running_session_entity.dart`, `lib/features/running/data/datasources/running_firestore_datasource.dart`, `lib/features/running/presentation/pages/running_result_page.dart`, `lib/features/running/presentation/widgets/pace_chart.dart` (신규), `lib/features/running/presentation/widgets/elevation_chart.dart` (신규), `lib/features/running/presentation/widgets/heart_rate_chart.dart` (신규)
   - 예상: 90분
 
-- [ ] **[관측성] FirebaseCrashlytics + Analytics 도입 (2026-04-28 정책 확정)**
-  - 정책: 둘 다 도입 / dev + prod 전체 환경 / `setUserIdentifier(uid)` 그대로 (Firebase uid는 난수 문자열, 추가 해시 X)
-  - 구현 체크리스트:
-    - [ ] `pubspec.yaml`에 `firebase_crashlytics`, `firebase_analytics` 추가 + `flutter pub get`
-    - [ ] `main.dart`: `FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError` + `PlatformDispatcher.instance.onError`로 Dart 비동기 에러도 캐치
-    - [ ] `AuthNotifier`에서 로그인 성공 시 `FirebaseCrashlytics.instance.setUserIdentifier(user.uid)` + `FirebaseAnalytics.instance.setUserId(id: user.uid)` 호출. 로그아웃 시 둘 다 `null`
-    - [ ] Analytics 이벤트 카탈로그 신설 (`lib/core/services/analytics_events.dart`):
-      - `sign_up` (provider), `login` (provider), `email_verification_sent`, `running_started`, `running_saved` (distance_km, duration_seconds), `crew_joined`, `crew_left`, `password_reset_requested`
-      - 이벤트는 enum/상수로 정의해 오타 방지
-    - [ ] 가입/로그인/러닝 시작/러닝 저장/크루 가입·탈퇴/인증 메일 발송에서 `AnalyticsEvents.log(...)` 호출
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - **⚠️ 사용자 직접 작업 (야간 후 알림)**:
-    - Android: `android/app/build.gradle`에 `com.google.firebase.crashlytics` 플러그인 추가 + `google-services.json` 최신본 확인 (네이티브 편집 = 야간 금지)
-    - iOS: Xcode `Runner.xcworkspace`에서 Crashlytics Run Script Phase 등록
-    - 검증: 의도 크래시 발생시켜 Firebase 콘솔 도착 확인
-  - 파일: `pubspec.yaml`, `lib/main.dart`, `lib/features/auth/presentation/providers/auth_provider.dart`, `lib/core/services/analytics_events.dart` (신규), 이벤트 호출부 6개 영역
-  - 예상: 70분 (Flutter 측), 네이티브는 사용자 별도
+- [x] ✅ **[관측성] FirebaseCrashlytics + Analytics — Flutter 측 (2026-04-28 구현 완료)**
+  - 구현:
+    - `pubspec.yaml` 에 `firebase_crashlytics: ^4.3.5` + `firebase_analytics: ^11.4.5` 추가
+    - `main.dart`: `runZonedGuarded` 로 비동기 에러 catch + `FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError` + `PlatformDispatcher.instance.onError`. 모두 try/catch 폴백으로 미초기화 환경에서도 안전
+    - `core/services/analytics_events.dart` — 이벤트 카탈로그 (signUp/login/logout/emailVerificationSent/passwordResetRequested/runningStarted/runningSaved/crewJoined/crewLeft) + 안전 발화 (`safeInstance` + try/catch + debugPrint)
+    - `core/services/crashlytics_helper.dart` — setUserIdentifier/recordError 안전 호출
+    - `AuthNotifier` 에 listener 로 로그인/로그아웃 전이 감지 → `setUserIdentifier(uid)` + `setUserId(uid)` 동기화. 로그아웃 시 둘 다 비움 + `logout` 이벤트
+    - 호출부 6개 — 이메일 로그인/Google/Apple/회원가입(emailVerificationSent 동시)/비번 재설정/이메일 인증 재발송/크루 가입/크루 탈퇴/러닝 저장(distance_km + duration_seconds)
+    - 검증: `flutter analyze` 0 issues + `flutter test` 93건 pass
+  - **⚠️ 사용자 직접 작업 (네이티브 편집 = 야간 금지)**:
+    - Android: `android/app/build.gradle` 에 `com.google.firebase.crashlytics` 플러그인 + `google-services.json` 확인
+    - iOS: Xcode Runner 에 Crashlytics Run Script Phase 등록
+    - 검증: 의도 크래시 발생 → Firebase 콘솔 도착 확인
+  - 파일: `pubspec.yaml`, `lib/main.dart`, `lib/core/services/analytics_events.dart` (신규), `lib/core/services/crashlytics_helper.dart` (신규), `lib/features/auth/presentation/providers/auth_provider.dart`, `lib/features/crew/presentation/pages/crew_detail_page.dart`, `lib/features/running/data/datasources/running_firestore_datasource.dart`
 
 - [x] ✅ **[입력 검증] 닉네임 규칙 강화 — 욕설·사칭·이모지·grapheme + Firestore 중복 검사 (2026-04-28 구현 완료)**
   - sync 검증 (이전 야간 완료): 욕설/비속어/운영진 사칭/숫자만/이모지만/grapheme 길이 — 모두 `NameValidator`

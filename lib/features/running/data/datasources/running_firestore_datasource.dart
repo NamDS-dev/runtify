@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/services/analytics_events.dart';
 import '../models/running_session_model.dart';
 import 'badge_firestore_datasource.dart';
 import 'running_mock_datasource.dart';
@@ -273,6 +274,15 @@ class RunningFirestoreDataSource implements RunningDataSource {
     } catch (_) {
       // 배지 체크 실패해도 러닝 저장에 영향 없음
     }
+
+    // Analytics — 러닝 저장 성공 시점에 발화 (Firebase 호출 실패해도 silent)
+    AnalyticsEvents.log(
+      AnalyticsEvents.runningSaved,
+      params: {
+        'distance_km': session.distanceKm,
+        'duration_seconds': session.durationSeconds,
+      },
+    );
 
     return session;
   }

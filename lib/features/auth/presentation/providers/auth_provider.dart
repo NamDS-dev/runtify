@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../../core/router/auth_router_state.dart';
+import '../../../../core/services/analytics_events.dart';
+import '../../../../core/services/crashlytics_helper.dart';
 import '../../../../core/services/email_verification_rate_limiter.dart';
 import '../../../../core/services/login_rate_limiter.dart';
 import '../../../../core/services/nickname_availability.dart';
@@ -88,12 +90,30 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
         _forgotPasswordUseCase = forgotPasswordUseCase,
         _rateLimiter = rateLimiter,
         super(const AsyncValue.loading()) {
-    // 상태가 바뀔 때마다 GoRouter redirect 가 감지할 수 있도록 notifier 갱신
+    // 상태가 바뀔 때마다 GoRouter redirect + Crashlytics/Analytics 사용자 식별 동기화
+    UserEntity? prev;
     addListener((next) {
       authRouterStateNotifier.value = next.valueOrNull;
+      _syncObservabilityIdentity(prev, next.valueOrNull);
+      prev = next.valueOrNull;
     });
     _checkCurrentUser();
     _subscribeToFirebaseAuthChanges();
+  }
+
+  // 로그인/로그아웃 전이마다 Crashlytics/Analytics user id 동기화
+  // - 로그인 시: setUserIdentifier(uid)
+  // - 로그아웃 시: setUserIdentifier('') / setUserId(null)
+  void _syncObservabilityIdentity(UserEntity? prev, UserEntity? next) {
+    if (prev?.id == next?.id) return;
+    if (next != null) {
+      CrashlyticsHelper.setUserIdentifier(next.id);
+      AnalyticsEvents.setUserId(next.id);
+    } else {
+      CrashlyticsHelper.setUserIdentifier('');
+      AnalyticsEvents.setUserId(null);
+      AnalyticsEvents.log(AnalyticsEvents.logout);
+    }
   }
 
   // Firebase Auth idTokenChanges 구독 — 토큰 만료/갱신 실패로 user=null 이 되면
@@ -156,6 +176,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
       final user = result.getOrElse(() => throw StateError('unreachable'));
       state = AsyncValue.data(user);
       await _rateLimiter.resetOnSuccess(email);
+      AnalyticsEvents.log(
+        AnalyticsEvents.login,
+        params: const {'method': 'password'},
+      );
       return null;
     }
 
@@ -202,6 +226,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
       },
       (user) {
         state = AsyncValue.data(user);
+        AnalyticsEvents.log(
+          AnalyticsEvents.signUp,
+          params: const {'method': 'password'},
+        );
+        AnalyticsEvents.log(AnalyticsEvents.emailVerificationSent);
         return null;
       },
     );
@@ -219,6 +248,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     try {
       final user = await _dataSource.signInWithGoogle();
       state = AsyncValue.data(user);
+      AnalyticsEvents.log(
+        AnalyticsEvents.login,
+        params: const {'method': 'google'},
+      );
       return null; // null = 성공
     } catch (e) {
       state = const AsyncValue.data(null);
@@ -232,6 +265,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     try {
       final user = await _dataSource.signInWithApple();
       state = AsyncValue.data(user);
+      AnalyticsEvents.log(
+        AnalyticsEvents.login,
+        params: const {'method': 'apple'},
+      );
       return null; // null = 성공
     } catch (e) {
       state = const AsyncValue.data(null);
@@ -251,7 +288,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     final result = await _forgotPasswordUseCase(
       ForgotPasswordParams(email: email),
     );
-    return result.fold((failure) => failure.message, (_) => null);
+    return result.fold(
+      (failure) => failure.message,
+      (_) {
+        AnalyticsEvents.log(AnalyticsEvents.passwordResetRequested);
+        return null;
+      },
+    );
   }
 
   // 현재 로그인된 사용자에게 이메일 인증 메일 재발송
@@ -280,6 +323,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
       if (impl is AuthFirebaseDataSource) {
         await impl.sendCurrentUserEmailVerification();
         await rateLimiter.markSent(user.id);
+        AnalyticsEvents.log(AnalyticsEvents.emailVerificationSent);
         return null;
       }
       // 데모 모드는 no-op 성공 처리

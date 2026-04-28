@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/auth/require_email_verified.dart';
 import '../../../../core/constants/korea_regions.dart';
+import '../../../../core/services/analytics_events.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/content_validator.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -771,6 +772,7 @@ class _ActionButton extends StatelessWidget {
         userId: userId,
         userName: user?.name ?? '',
       );
+      AnalyticsEvents.log(AnalyticsEvents.crewJoined);
       // 신청 상태 갱신
       ref.invalidate(joinRequestStatusProvider((crewId: crewId, userId: userId)));
 
@@ -852,6 +854,7 @@ class _ActionButton extends StatelessWidget {
     if (!context.mounted) return;
 
     if (success) {
+      AnalyticsEvents.log(AnalyticsEvents.crewLeft);
       await ref.read(authProvider.notifier).refreshUser();
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
