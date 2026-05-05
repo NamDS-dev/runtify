@@ -12,6 +12,7 @@ import '../../../course/domain/entities/course_entity.dart';
 import '../../domain/entities/badge_entity.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
+import '../widgets/lap_table.dart';
 
 // 러닝 완료 결과 화면 (stopRun 후 표시)
 class RunningResultPage extends ConsumerStatefulWidget {
@@ -269,8 +270,11 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
                       ),
                     ),
 
-                    // 구간 페이스 (있을 때만)
-                    if (s.splitPaces.isNotEmpty) ...[
+                    // 랩 테이블 (laps 있으면 우선) — 없으면 레거시 splitPaces fallback
+                    if (s.laps.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      LapTable(laps: s.laps),
+                    ] else if (s.splitPaces.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       _SplitPacesSection(splits: s.splitPaces),
                     ],
@@ -386,6 +390,7 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
         region: original.region,
         routePoints: original.routePoints,
         splitPaces: original.splitPaces,
+        laps: original.laps,
         regionSi: original.regionSi,
         regionGu: original.regionGu,
         regionDong: original.regionDong,

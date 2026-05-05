@@ -1,3 +1,4 @@
+import '../../domain/entities/lap_data.dart';
 import '../../domain/entities/running_session_entity.dart';
 
 class RunningSessionModel extends RunningSessionEntity {
@@ -35,6 +36,7 @@ class RunningSessionModel extends RunningSessionEntity {
     // 사용자 부여 제목/메모
     super.title,
     super.memo,
+    super.laps,
   });
 
   factory RunningSessionModel.fromFirestore(
@@ -59,6 +61,12 @@ class RunningSessionModel extends RunningSessionEntity {
             ))
         .toList();
 
+    // laps: [{km, splitSeconds, pace, avgHeartRate}] 역직렬화 (없으면 빈 리스트)
+    final rawLaps = data['laps'] as List<dynamic>? ?? [];
+    final laps = rawLaps
+        .map((l) => LapData.fromJson((l as Map).cast<String, dynamic>()))
+        .toList();
+
     return RunningSessionModel(
       id: id,
       userId: data['userId'] ?? '',
@@ -74,6 +82,7 @@ class RunningSessionModel extends RunningSessionEntity {
       region: data['region'] ?? '',
       routePoints: routePoints,
       splitPaces: splitPaces,
+      laps: laps,
       // 하위 호환 지역 필드 역직렬화 (null 가능)
       regionDong: data['regionDong'] as String?,
       regionGu: data['regionGu'] as String?,
@@ -109,6 +118,8 @@ class RunningSessionModel extends RunningSessionEntity {
       'routePoints': routePoints.map((p) => {'lat': p.lat, 'lng': p.lng}).toList(),
       // 구간 페이스 직렬화
       'splitPaces': splitPaces.map((s) => {'km': s.km, 'pace': s.pace}).toList(),
+      // 랩 데이터 직렬화 (비어 있으면 저장 안 함 — 레거시 문서 깔끔하게 유지)
+      if (laps.isNotEmpty) 'laps': laps.map((l) => l.toJson()).toList(),
       // 하위 호환 지역 계층 필드 (null이면 저장 안 함)
       if (regionDong != null) 'regionDong': regionDong,
       if (regionGu != null) 'regionGu': regionGu,
@@ -171,6 +182,7 @@ class RunningSessionModel extends RunningSessionEntity {
       newPersonalRecords: newPersonalRecords ?? this.newPersonalRecords,
       title: title,
       memo: memo,
+      laps: laps,
     );
   }
 }

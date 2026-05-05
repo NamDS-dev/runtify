@@ -13,6 +13,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/heart_rate_ble_datasource.dart';
 import '../../data/models/running_session_model.dart';
 import '../../data/services/running_notification_service.dart';
+import '../../domain/entities/lap_data.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
 import '../widgets/lock_overlay.dart';
@@ -45,6 +46,10 @@ class _RunningPageState extends ConsumerState<RunningPage>
 
   // 구간 페이스 (km마다 기록)
   final List<SplitPace> _splitPaces = [];
+  // 랩 데이터 (1km 단위, 시간/페이스/평균 심박)
+  final List<LapData> _laps = [];
+  // 현재 진행 중 랩의 심박수 readings (랩 마감 시 평균 계산 후 비움)
+  final List<int> _hrReadingsCurrentLap = [];
   double _lastSplitDistanceKm = 0.0; // 마지막 구간 시작 시점 거리
   int _lastSplitSeconds = 0;         // 마지막 구간 시작 시점 시간
 
@@ -117,6 +122,8 @@ class _RunningPageState extends ConsumerState<RunningPage>
     _hrReadings.clear();
     _routePoints.clear();
     _splitPaces.clear();
+    _laps.clear();
+    _hrReadingsCurrentLap.clear();
     _lastSplitDistanceKm = 0.0;
     _lastSplitSeconds = 0;
     _gpsRestartAttempts = 0;
@@ -157,6 +164,7 @@ class _RunningPageState extends ConsumerState<RunningPage>
       if (mounted) {
         setState(() => _currentHr = hr);
         _hrReadings.add(hr);
+        _hrReadingsCurrentLap.add(hr);
       }
     });
     try {
@@ -240,6 +248,18 @@ class _RunningPageState extends ConsumerState<RunningPage>
             final splitSeconds = _elapsedSeconds - _lastSplitSeconds;
             final splitPace = splitSeconds > 0 ? splitSeconds / 60.0 : 0.0;
             _splitPaces.add(SplitPace(km: currentKm, pace: splitPace));
+            // 랩 데이터 — 평균 심박수까지 포함 (이번 랩 동안 들어온 readings)
+            final lapHr = _hrReadingsCurrentLap.isNotEmpty
+                ? _hrReadingsCurrentLap.reduce((a, b) => a + b) /
+                    _hrReadingsCurrentLap.length
+                : 0.0;
+            _laps.add(LapData(
+              km: currentKm,
+              splitSeconds: splitSeconds,
+              pace: splitPace,
+              avgHeartRate: lapHr,
+            ));
+            _hrReadingsCurrentLap.clear();
             _lastSplitDistanceKm = _distanceKm;
             _lastSplitSeconds = _elapsedSeconds;
           }
@@ -297,6 +317,14 @@ class _RunningPageState extends ConsumerState<RunningPage>
           .toList(),
       splitPaces: _splitPaces
           .map((s) => [s.km.toDouble(), s.pace])
+          .toList(),
+      laps: _laps
+          .map((l) => [
+                l.km.toDouble(),
+                l.splitSeconds.toDouble(),
+                l.pace,
+                l.avgHeartRate,
+              ])
           .toList(),
       lastLat: _lastPosition?.latitude,
       lastLng: _lastPosition?.longitude,
@@ -424,6 +452,7 @@ class _RunningPageState extends ConsumerState<RunningPage>
           rankingRegionDong: rankingDong.isNotEmpty ? rankingDong : null,
           routePoints: entityRoutePoints,
           splitPaces: _splitPaces,
+          laps: _laps,
         );
 
         // 컨펌이 필요하지 않은 경우에만 즉시 저장

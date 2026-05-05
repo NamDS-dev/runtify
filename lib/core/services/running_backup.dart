@@ -14,6 +14,8 @@ class RunningBackupSnapshot {
   final List<List<double>> routePoints;
   // [[km, pace], ...]
   final List<List<double>> splitPaces;
+  // [[km, splitSeconds, pace, avgHr], ...]
+  final List<List<double>> laps;
   final double? lastLat;
   final double? lastLng;
   final double? firstLat;
@@ -26,6 +28,7 @@ class RunningBackupSnapshot {
     required this.avgHeartRate,
     required this.routePoints,
     required this.splitPaces,
+    this.laps = const [],
     this.lastLat,
     this.lastLng,
     this.firstLat,
@@ -39,6 +42,7 @@ class RunningBackupSnapshot {
         'avgHeartRate': avgHeartRate,
         'routePoints': routePoints,
         'splitPaces': splitPaces,
+        'laps': laps,
         'lastLat': lastLat,
         'lastLng': lastLng,
         'firstLat': firstLat,
@@ -57,6 +61,11 @@ class RunningBackupSnapshot {
               .map((e) => (e as num).toDouble())
               .toList())
           .toList();
+      final laps = ((j['laps'] as List?) ?? <dynamic>[])
+          .map((p) => (p as List)
+              .map((e) => (e as num).toDouble())
+              .toList())
+          .toList();
       return RunningBackupSnapshot(
         startTime: DateTime.parse(j['startTime'] as String),
         distanceKm: (j['distanceKm'] as num).toDouble(),
@@ -64,6 +73,7 @@ class RunningBackupSnapshot {
         avgHeartRate: (j['avgHeartRate'] as num? ?? 0).toDouble(),
         routePoints: routes,
         splitPaces: splits,
+        laps: laps,
         lastLat: (j['lastLat'] as num?)?.toDouble(),
         lastLng: (j['lastLng'] as num?)?.toDouble(),
         firstLat: (j['firstLat'] as num?)?.toDouble(),

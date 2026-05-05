@@ -9,6 +9,7 @@ import '../../data/datasources/running_firestore_datasource.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
 import '../widgets/edit_session_dialog.dart';
+import '../widgets/lap_table.dart';
 
 // 러닝 기록 상세 화면 (홈 카드 탭 시 표시)
 class RunningDetailPage extends ConsumerStatefulWidget {
@@ -199,8 +200,11 @@ class _RunningDetailPageState extends ConsumerState<RunningDetailPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // ─── 구간 페이스 (있을 때만) ───────────────────
-                  if (session.splitPaces.isNotEmpty) ...[
+                  // ─── 랩 테이블 (laps 우선) — 없으면 splitPaces fallback ─
+                  if (session.laps.isNotEmpty) ...[
+                    LapTable(laps: session.laps),
+                    const SizedBox(height: 12),
+                  ] else if (session.splitPaces.isNotEmpty) ...[
                     _SplitPacesDetail(splits: session.splitPaces),
                     const SizedBox(height: 12),
                   ],

@@ -4,6 +4,7 @@ import '../../../../core/services/running_backup.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/running_session_model.dart';
+import '../../domain/entities/lap_data.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
 
@@ -96,6 +97,14 @@ class _RunningRecoveryHandlerState
           .toList(),
       splitPaces: snap.splitPaces
           .map((p) => SplitPace(km: p[0].toInt(), pace: p[1]))
+          .toList(),
+      laps: snap.laps
+          .map((l) => LapData(
+                km: l[0].toInt(),
+                splitSeconds: l[1].toInt(),
+                pace: l[2],
+                avgHeartRate: l.length > 3 ? l[3] : 0.0,
+              ))
           .toList(),
     );
 
