@@ -53,6 +53,10 @@ class _RunningPageState extends ConsumerState<RunningPage>
   StreamSubscription<BleHrStatus>? _hrStatusSub;
   int _currentHr = 0;
   BleHrStatus _bleStatus = BleHrStatus.disconnected;
+
+  // GPS stream 자동 재구독 카운터 — onError 시 max 3회까지 재시도
+  int _gpsRestartAttempts = 0;
+  static const int _gpsMaxRestartAttempts = 3;
   final List<int> _hrReadings = []; // 평균 심박수 계산용
 
   // GPS 권한 확인 및 요청
@@ -82,6 +86,20 @@ class _RunningPageState extends ConsumerState<RunningPage>
     final hasPermission = await _requestLocationPermission();
     if (!hasPermission) return;
 
+    // 알림 권한을 GPS stream 시작 전에 먼저 await — Android 13+에서 알림 권한 없으면
+    // ForegroundNotificationConfig가 foreground service 시작에 실패해 stream이
+    // 즉시 onError로 죽는 이슈를 방지. 거부되면 foreground 알림 없이 진행.
+    bool notificationGranted = false;
+    try {
+      notificationGranted =
+          await _notificationService.requestPermission().timeout(
+                const Duration(seconds: 3),
+                onTimeout: () => false,
+              );
+    } catch (_) {
+      notificationGranted = false;
+    }
+
     _startTime = DateTime.now();
     _lastPosition = null;
     _firstPosition = null;
@@ -92,18 +110,61 @@ class _RunningPageState extends ConsumerState<RunningPage>
     _splitPaces.clear();
     _lastSplitDistanceKm = 0.0;
     _lastSplitSeconds = 0;
+    _gpsRestartAttempts = 0;
     setState(() => _isRunning = true);
 
-    // 플랫폼별 Location 설정: 백그라운드 추적을 위해 iOS/Android 분기
+    _subscribePositionStream(notificationGranted: notificationGranted);
+
+    // 경과 시간 타이머 먼저 등록 — 알림/BLE 권한 요청이 실패/hang해도 타이머는 반드시 동작
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _elapsedSeconds = DateTime.now().difference(_startTime).inSeconds;
+      });
+      // 워치/알림에 실시간 데이터 전송 — 실패해도 타이머는 계속 돌아야 함
+      try {
+        _notificationService.update(
+          distanceKm: _distanceKm,
+          elapsedSeconds: _elapsedSeconds,
+          pace: _paceString,
+          heartRate: _currentHr,
+        );
+      } catch (_) {
+        // 알림 서비스 이슈(권한/플랫폼 미지원)는 무시
+      }
+    });
+
+    // BLE 심박수 스캔 시작 — 실기기에서 권한/지원 이슈로 실패해도 러닝은 계속 진행
+    _hrStatusSub = _hrDataSource.statusStream.listen((status) {
+      if (mounted) setState(() => _bleStatus = status);
+    });
+    _hrSub = _hrDataSource.heartRateStream.listen((hr) {
+      if (mounted) {
+        setState(() => _currentHr = hr);
+        _hrReadings.add(hr);
+      }
+    });
+    try {
+      await _hrDataSource.startScan();
+    } catch (_) {
+      // BLE 미지원/권한 거부 — 심박수 없이 러닝 계속 진행
+    }
+  }
+
+  // GPS stream 구독 — onError 시 _gpsMaxRestartAttempts 까지 backoff로 자동 재구독.
+  // 알림 권한이 거부됐으면 foreground notification config 생략 (foreground service 시도 안 함).
+  void _subscribePositionStream({required bool notificationGranted}) {
     final LocationSettings locationSettings = Platform.isAndroid
         ? AndroidSettings(
             accuracy: LocationAccuracy.high,
             distanceFilter: 2,
-            foregroundNotificationConfig: const ForegroundNotificationConfig(
-              notificationTitle: 'Runtify 러닝 중',
-              notificationText: '러닝 기록이 진행되고 있습니다.',
-              enableWakeLock: true,
-            ),
+            foregroundNotificationConfig: notificationGranted
+                ? const ForegroundNotificationConfig(
+                    notificationTitle: 'Runtify 러닝 중',
+                    notificationText: '러닝 기록이 진행되고 있습니다.',
+                    enableWakeLock: true,
+                  )
+                : null,
           )
         : Platform.isIOS
             ? AppleSettings(
@@ -118,10 +179,17 @@ class _RunningPageState extends ConsumerState<RunningPage>
                 accuracy: LocationAccuracy.high,
                 distanceFilter: 2,
               );
+
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: locationSettings,
     ).listen(
       (Position position) {
+        // 정상 이벤트 수신 — restart 카운터 리셋 + 에러 메시지 클리어
+        if (_gpsRestartAttempts > 0 || _gpsError != null) {
+          _gpsRestartAttempts = 0;
+          if (_gpsError != null) setState(() => _gpsError = null);
+        }
+
         // GPS 정확도 필터 — 초기 10초는 GPS lock 대기, 완화된 기준 50m 적용
         // (도심/건물 사이에서 초기 accuracy 25~40m 정상)
         final elapsedSinceStart = DateTime.now().difference(_startTime).inSeconds;
@@ -178,47 +246,25 @@ class _RunningPageState extends ConsumerState<RunningPage>
         }
       },
       onError: (_) {
-        setState(() => _gpsError = 'GPS 신호를 받을 수 없습니다. 야외에서 시도해주세요.');
+        if (!_isRunning || !mounted) return;
+        if (_gpsRestartAttempts < _gpsMaxRestartAttempts) {
+          _gpsRestartAttempts++;
+          // 재구독 시도 — 1초/2초/4초 backoff
+          final delay = Duration(seconds: 1 << (_gpsRestartAttempts - 1));
+          setState(() => _gpsError =
+              'GPS 신호 재연결 중... ($_gpsRestartAttempts/$_gpsMaxRestartAttempts)');
+          _positionSubscription?.cancel();
+          _positionSubscription = null;
+          Future.delayed(delay, () {
+            if (!_isRunning || !mounted) return;
+            _subscribePositionStream(notificationGranted: notificationGranted);
+          });
+        } else {
+          // 모든 재시도 실패 — 사용자에게 안내, 거리 누적 중단
+          setState(() => _gpsError = 'GPS 신호를 받을 수 없습니다. 야외에서 시도해주세요.');
+        }
       },
     );
-
-    // 경과 시간 타이머 먼저 등록 — 알림/BLE 권한 요청이 실패/hang해도 타이머는 반드시 동작
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        _elapsedSeconds = DateTime.now().difference(_startTime).inSeconds;
-      });
-      // 워치/알림에 실시간 데이터 전송 — 실패해도 타이머는 계속 돌아야 함
-      try {
-        _notificationService.update(
-          distanceKm: _distanceKm,
-          elapsedSeconds: _elapsedSeconds,
-          pace: _paceString,
-          heartRate: _currentHr,
-        );
-      } catch (_) {
-        // 알림 서비스 이슈(권한/플랫폼 미지원)는 무시
-      }
-    });
-
-    // 알림 권한 요청 (Android 13+) — fire-and-forget
-    _notificationService.requestPermission().catchError((_) => false);
-
-    // BLE 심박수 스캔 시작 — 실기기에서 권한/지원 이슈로 실패해도 러닝은 계속 진행
-    _hrStatusSub = _hrDataSource.statusStream.listen((status) {
-      if (mounted) setState(() => _bleStatus = status);
-    });
-    _hrSub = _hrDataSource.heartRateStream.listen((hr) {
-      if (mounted) {
-        setState(() => _currentHr = hr);
-        _hrReadings.add(hr);
-      }
-    });
-    try {
-      await _hrDataSource.startScan();
-    } catch (_) {
-      // BLE 미지원/권한 거부 — 심박수 없이 러닝 계속 진행
-    }
   }
 
   Future<void> _stopRun() async {

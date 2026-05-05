@@ -17,31 +17,27 @@
 - 하루 1시간 내외 사이드 프로젝트
 - AI 자동화 최대 활용 원칙
 
-## 에이전트 사용법
-| 명령어 | 역할 | 예시 |
-|--------|------|------|
-| `/project:planning` | 기획/문서화/DB 설계 | `/project:planning 크루 시스템 기능 명세 작성해줘` |
-| `/project:coding` | Flutter/Firebase 코드 작성 | `/project:coding 로그인 화면 코드 만들어줘` |
-| `/project:design` | UI/UX 디자인 가이드 | `/project:design 홈 대시보드 레이아웃 잡아줘` |
-
-## MVP 우선순위 (개발 순서)
-1. Flutter 프로젝트 초기 설정
-2. Firebase 연동 + 로그인
-3. Samsung Health API 연동 (러닝 데이터 수신)
-4. 기본 대시보드 (러닝 기록 표시)
-5. 포인트 시스템
-6. 크루 기능
-7. 랭킹 시스템
-8. 리워드 스토어
+## 에이전트 사용법 (슬래시 커맨드)
+| 명령어 | 역할 |
+|--------|------|
+| `/planning` | 기획/문서화/DB 설계 |
+| `/coding` | Flutter/Firebase 코드 작성 |
+| `/design` | UI/UX 디자인 가이드 (Figma MCP 활용) |
+| `/qa` | 자동화 테스트 + 시나리오 검증 |
+| `/pm` | 일일 작업 오케스트레이션 |
+| `/pm-night` | 야간 자동 개발 큐 실행 |
+| `/pm-brief` | 일일 요약 + Notion 업로드 |
 
 ## 개발 워크플로우 (Design-First)
 **반드시 이 순서로 작업:**
-1. `/project:design` → Figma에서 UI 먼저 디자인
-2. 디자인 확정 후 `/project:coding` → Flutter 코드 구현
+1. `/design` → Figma에서 UI 먼저 디자인 (Figma 작업 시 prototype reaction까지 연결)
+2. 디자인 확정 후 `/coding` → Flutter 코드 구현
 3. 코드 먼저 짜는 것 금지 — 항상 Figma 디자인 기준
 
-## 기능 기획 문서
-→ [docs/FEATURE_PLAN.md](docs/FEATURE_PLAN.md) 에서 남은 기능 기획 확인
+## 진행 상황 / 남은 작업
+- **현재 상황**: [docs/STATUS.md](docs/STATUS.md)
+- **상세 기획 + 야간 큐**: [docs/FEATURE_PLAN.md](docs/FEATURE_PLAN.md)
+- **운영 정책**: [docs/POLICY.md](docs/POLICY.md)
 
 ## 코딩 완료 후 필수 체크 (자동 QA)
 코드 작성이 끝나면 **항상 이 순서로 실행**:
