@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'lap_data.dart';
+import 'running_sample.dart';
 
 // 구간 페이스 데이터 (예: 1km마다 기록)
 class SplitPace {
@@ -64,6 +65,9 @@ class RunningSessionEntity extends Equatable {
   // splitPaces 와 별개로 추가 정보 보유 — 결과 페이지 랩 테이블에 사용
   final List<LapData> laps;
 
+  // 10초 단위 샘플 (페이스/고도/심박) — 결과 페이지 라인 차트에 사용
+  final List<RunningSample> samples;
+
   const RunningSessionEntity({
     required this.id,
     required this.userId,
@@ -93,6 +97,7 @@ class RunningSessionEntity extends Equatable {
     this.title,
     this.memo,
     this.laps = const [],
+    this.samples = const [],
   });
 
   bool get isCompleted => endTime != null;

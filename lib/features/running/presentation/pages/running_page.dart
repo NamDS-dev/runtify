@@ -15,6 +15,7 @@ import '../../data/datasources/heart_rate_ble_datasource.dart';
 import '../../data/models/running_session_model.dart';
 import '../../data/services/running_notification_service.dart';
 import '../../domain/entities/lap_data.dart';
+import '../../domain/entities/running_sample.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
 import '../widgets/lock_overlay.dart';
@@ -51,6 +52,9 @@ class _RunningPageState extends ConsumerState<RunningPage>
   final List<LapData> _laps = [];
   // 현재 진행 중 랩의 심박수 readings (랩 마감 시 평균 계산 후 비움)
   final List<int> _hrReadingsCurrentLap = [];
+  // 10초 단위 샘플 (페이스/고도/심박) — 결과 페이지 차트용
+  final List<RunningSample> _samples = [];
+  Timer? _sampleTimer;
   double _lastSplitDistanceKm = 0.0; // 마지막 구간 시작 시점 거리
   int _lastSplitSeconds = 0;         // 마지막 구간 시작 시점 시간
 
@@ -155,6 +159,7 @@ class _RunningPageState extends ConsumerState<RunningPage>
     _splitPaces.clear();
     _laps.clear();
     _hrReadingsCurrentLap.clear();
+    _samples.clear();
     _lastSplitDistanceKm = 0.0;
     _lastSplitSeconds = 0;
     _gpsRestartAttempts = 0;
@@ -185,6 +190,17 @@ class _RunningPageState extends ConsumerState<RunningPage>
     _backupTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!_isRunning) return;
       _backup.save(_currentBackupSnapshot());
+    });
+
+    // 10초마다 페이스/고도/심박 샘플링 — 결과 페이지 차트용
+    _sampleTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!_isRunning) return;
+      _samples.add(RunningSample(
+        elapsedSeconds: _elapsedSeconds,
+        paceMinPerKm: _currentPace,
+        altitudeM: _lastPosition?.altitude ?? 0,
+        heartRate: _currentHr.toDouble(),
+      ));
     });
 
     // BLE 심박수 스캔 시작 — 실기기에서 권한/지원 이슈로 실패해도 러닝은 계속 진행
@@ -368,6 +384,8 @@ class _RunningPageState extends ConsumerState<RunningPage>
     _timer?.cancel();
     _backupTimer?.cancel();
     _backupTimer = null;
+    _sampleTimer?.cancel();
+    _sampleTimer = null;
     // 정상 종료 — 백업 키 삭제 (저장 성공/실패와 무관, 러닝은 끝남)
     await _backup.clear();
     await _positionSubscription?.cancel();
@@ -484,6 +502,7 @@ class _RunningPageState extends ConsumerState<RunningPage>
           routePoints: entityRoutePoints,
           splitPaces: _splitPaces,
           laps: _laps,
+          samples: _samples,
         );
 
         // 컨펌이 필요하지 않은 경우에만 즉시 저장
@@ -586,6 +605,7 @@ class _RunningPageState extends ConsumerState<RunningPage>
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _backupTimer?.cancel();
+    _sampleTimer?.cancel();
     _positionSubscription?.cancel();
     _mapController.dispose();
     _hrDataSource.dispose();
@@ -940,6 +960,8 @@ class _RunningPageState extends ConsumerState<RunningPage>
                 _timer?.cancel();
                 _backupTimer?.cancel();
                 _backupTimer = null;
+                _sampleTimer?.cancel();
+                _sampleTimer = null;
                 // 사용자가 명시적으로 나가는 경우도 백업 삭제
                 await _backup.clear();
                 await _positionSubscription?.cancel();

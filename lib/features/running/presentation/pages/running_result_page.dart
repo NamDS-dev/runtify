@@ -13,6 +13,7 @@ import '../../domain/entities/badge_entity.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
 import '../widgets/lap_table.dart';
+import '../widgets/session_chart_card.dart';
 
 // 러닝 완료 결과 화면 (stopRun 후 표시)
 class RunningResultPage extends ConsumerStatefulWidget {
@@ -279,6 +280,12 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
                       _SplitPacesSection(splits: s.splitPaces),
                     ],
 
+                    // 페이스/고도/심박 라인 차트 (samples 있을 때만)
+                    if (s.samples.length >= 2) ...[
+                      const SizedBox(height: 12),
+                      SessionChartCard(samples: s.samples),
+                    ],
+
                     const SizedBox(height: 16),
 
                     // 코스로 저장 버튼 (경로가 있을 때만)
@@ -391,6 +398,7 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
         routePoints: original.routePoints,
         splitPaces: original.splitPaces,
         laps: original.laps,
+        samples: original.samples,
         regionSi: original.regionSi,
         regionGu: original.regionGu,
         regionDong: original.regionDong,

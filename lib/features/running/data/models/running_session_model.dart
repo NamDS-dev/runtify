@@ -1,4 +1,5 @@
 import '../../domain/entities/lap_data.dart';
+import '../../domain/entities/running_sample.dart';
 import '../../domain/entities/running_session_entity.dart';
 
 class RunningSessionModel extends RunningSessionEntity {
@@ -37,6 +38,7 @@ class RunningSessionModel extends RunningSessionEntity {
     super.title,
     super.memo,
     super.laps,
+    super.samples,
   });
 
   factory RunningSessionModel.fromFirestore(
@@ -67,6 +69,12 @@ class RunningSessionModel extends RunningSessionEntity {
         .map((l) => LapData.fromJson((l as Map).cast<String, dynamic>()))
         .toList();
 
+    // samples: 결과 페이지 라인 차트용 10초 단위 샘플 (없으면 빈 리스트)
+    final rawSamples = data['samples'] as List<dynamic>? ?? [];
+    final samples = rawSamples
+        .map((s) => RunningSample.fromJson((s as Map).cast<String, dynamic>()))
+        .toList();
+
     return RunningSessionModel(
       id: id,
       userId: data['userId'] ?? '',
@@ -83,6 +91,7 @@ class RunningSessionModel extends RunningSessionEntity {
       routePoints: routePoints,
       splitPaces: splitPaces,
       laps: laps,
+      samples: samples,
       // 하위 호환 지역 필드 역직렬화 (null 가능)
       regionDong: data['regionDong'] as String?,
       regionGu: data['regionGu'] as String?,
@@ -120,6 +129,8 @@ class RunningSessionModel extends RunningSessionEntity {
       'splitPaces': splitPaces.map((s) => {'km': s.km, 'pace': s.pace}).toList(),
       // 랩 데이터 직렬화 (비어 있으면 저장 안 함 — 레거시 문서 깔끔하게 유지)
       if (laps.isNotEmpty) 'laps': laps.map((l) => l.toJson()).toList(),
+      // 10초 단위 샘플 직렬화 (비어 있으면 저장 안 함)
+      if (samples.isNotEmpty) 'samples': samples.map((s) => s.toJson()).toList(),
       // 하위 호환 지역 계층 필드 (null이면 저장 안 함)
       if (regionDong != null) 'regionDong': regionDong,
       if (regionGu != null) 'regionGu': regionGu,
@@ -183,6 +194,7 @@ class RunningSessionModel extends RunningSessionEntity {
       title: title,
       memo: memo,
       laps: laps,
+      samples: samples,
     );
   }
 }

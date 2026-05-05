@@ -10,6 +10,7 @@ import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
 import '../widgets/edit_session_dialog.dart';
 import '../widgets/lap_table.dart';
+import '../widgets/session_chart_card.dart';
 
 // 러닝 기록 상세 화면 (홈 카드 탭 시 표시)
 class RunningDetailPage extends ConsumerStatefulWidget {
@@ -206,6 +207,12 @@ class _RunningDetailPageState extends ConsumerState<RunningDetailPage> {
                     const SizedBox(height: 12),
                   ] else if (session.splitPaces.isNotEmpty) ...[
                     _SplitPacesDetail(splits: session.splitPaces),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // ─── 페이스/고도/심박 라인 차트 (samples 있을 때만) ───
+                  if (session.samples.length >= 2) ...[
+                    SessionChartCard(samples: session.samples),
                     const SizedBox(height: 12),
                   ],
 
