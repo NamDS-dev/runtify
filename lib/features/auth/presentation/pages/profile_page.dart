@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/personal_record_service.dart';
+import '../../../../core/services/running_voice_announcer.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -106,6 +107,10 @@ class ProfilePage extends ConsumerWidget {
 
                 // 마케팅 수신 동의 토글 (정보통신망법 § 50 대비)
                 _MarketingConsentToggle(user: user),
+                const SizedBox(height: 12),
+
+                // 1km 음성 안내 토글 (디바이스 고유, SharedPreferences)
+                const _VoiceAnnouncementToggle(),
                 const SizedBox(height: 20),
 
                 // 로그아웃 버튼
@@ -920,6 +925,92 @@ class _MarketingConsentToggleState
                   onChanged: _toggle,
                   activeThumbColor: AppTheme.primary,
                 ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 1km 음성 안내 토글 ───────────────────────────────────────────────
+// 디바이스 고유 (SharedPreferences). 무음 모드는 보통 디바이스 단위라
+// Firestore 다중 디바이스 동기화 불필요.
+class _VoiceAnnouncementToggle extends StatefulWidget {
+  const _VoiceAnnouncementToggle();
+
+  @override
+  State<_VoiceAnnouncementToggle> createState() =>
+      _VoiceAnnouncementToggleState();
+}
+
+class _VoiceAnnouncementToggleState extends State<_VoiceAnnouncementToggle> {
+  bool _enabled = RunningVoiceAnnouncer.defaultEnabled;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final v = await RunningVoiceAnnouncer.isEnabled();
+    if (!mounted) return;
+    setState(() {
+      _enabled = v;
+      _loaded = true;
+    });
+  }
+
+  Future<void> _toggle(bool next) async {
+    setState(() => _enabled = next);
+    await RunningVoiceAnnouncer.setEnabled(next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: context.colors.cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '1km 음성 안내',
+                  style: TextStyle(
+                    color: context.colors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '러닝 중 매 1km 통과 시 페이스/심박 음성 안내',
+                  style: TextStyle(
+                    color: context.colors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!_loaded)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Switch(
+              value: _enabled,
+              onChanged: _toggle,
+              activeThumbColor: AppTheme.primary,
+            ),
         ],
       ),
     );

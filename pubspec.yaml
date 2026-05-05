@@ -79,6 +79,7 @@ dependencies:
   shared_preferences: ^2.3.5  # 테마 설정 영구 저장
   url_launcher: ^6.3.2
   fl_chart: ^1.2.0
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:

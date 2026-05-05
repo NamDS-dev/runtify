@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import '../../../../core/providers/gps_signal_provider.dart';
 import '../../../../core/services/running_backup.dart';
+import '../../../../core/services/running_voice_announcer.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/heart_rate_ble_datasource.dart';
@@ -55,6 +56,9 @@ class _RunningPageState extends ConsumerState<RunningPage>
   // 10초 단위 샘플 (페이스/고도/심박) — 결과 페이지 차트용
   final List<RunningSample> _samples = [];
   Timer? _sampleTimer;
+
+  // 1km 통과 시 음성 안내 (Profile 토글 ON일 때만)
+  final RunningVoiceAnnouncer _voiceAnnouncer = RunningVoiceAnnouncer();
   double _lastSplitDistanceKm = 0.0; // 마지막 구간 시작 시점 거리
   int _lastSplitSeconds = 0;         // 마지막 구간 시작 시점 시간
 
@@ -306,6 +310,12 @@ class _RunningPageState extends ConsumerState<RunningPage>
               pace: splitPace,
               avgHeartRate: lapHr,
             ));
+            // 음성 안내 — 비활성화돼 있으면 announcer 내부에서 즉시 반환
+            _voiceAnnouncer.announceKm(
+              km: currentKm,
+              paceMinPerKm: splitPace,
+              avgHeartRate: lapHr,
+            );
             _hrReadingsCurrentLap.clear();
             _lastSplitDistanceKm = _distanceKm;
             _lastSplitSeconds = _elapsedSeconds;
@@ -611,6 +621,7 @@ class _RunningPageState extends ConsumerState<RunningPage>
     _hrDataSource.dispose();
     _hrSub?.cancel();
     _hrStatusSub?.cancel();
+    _voiceAnnouncer.dispose();
     super.dispose();
   }
 
