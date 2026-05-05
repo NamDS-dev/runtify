@@ -15,6 +15,7 @@ import '../../data/models/running_session_model.dart';
 import '../../data/services/running_notification_service.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
+import '../widgets/lock_overlay.dart';
 
 // 러닝 트래킹 화면 (지도 상단 50% + 스탯 패널 하단)
 class RunningPage extends ConsumerStatefulWidget {
@@ -63,6 +64,9 @@ class _RunningPageState extends ConsumerState<RunningPage>
   // 진행 중 러닝 백업 (앱 강제 종료/크래시 복구) — 30초 주기
   final RunningBackup _backup = RunningBackup();
   Timer? _backupTimer;
+
+  // 잠금 화면 — 활성 시 종료 버튼/뒤로가기 차단, 위로 길게 스와이프(2초+)로만 해제
+  bool _isLocked = false;
 
   // GPS 권한 확인 및 요청
   Future<bool> _requestLocationPermission() async {
@@ -567,22 +571,42 @@ class _RunningPageState extends ConsumerState<RunningPage>
             ],
           ),
 
-          // 뒤로가기 버튼 (지도 위에 오버레이)
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: CircleAvatar(
-                backgroundColor: Colors.black54,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: _onBackPressed,
+          // 뒤로가기 버튼 (지도 위에 오버레이) — 잠금 중 숨김
+          if (!_isLocked)
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: CircleAvatar(
+                  backgroundColor: Colors.black54,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: _onBackPressed,
+                  ),
                 ),
               ),
             ),
-          ),
+
+          // 자물쇠 토글 버튼 — 러닝 중 우측 상단 (잠금 중에는 오버레이가 가림)
+          if (_isRunning && !_isLocked)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: CircleAvatar(
+                    backgroundColor: Colors.black54,
+                    child: IconButton(
+                      icon: const Icon(Icons.lock_open, color: Colors.white),
+                      tooltip: '화면 잠금',
+                      onPressed: () => setState(() => _isLocked = true),
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
           // GPS 오류 배너 (지도 위에 오버레이)
-          if (_gpsError != null)
+          if (_gpsError != null && !_isLocked)
             Positioned(
               top: MediaQuery.of(context).padding.top + 56,
               left: 16,
@@ -598,6 +622,14 @@ class _RunningPageState extends ConsumerState<RunningPage>
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.white, fontSize: 12),
                 ),
+              ),
+            ),
+
+          // 잠금 오버레이 — 활성 시 모든 하위 터치 차단, 위로 길게 스와이프(2초+)로만 해제
+          if (_isLocked)
+            Positioned.fill(
+              child: LockOverlay(
+                onUnlock: () => setState(() => _isLocked = false),
               ),
             ),
         ],
