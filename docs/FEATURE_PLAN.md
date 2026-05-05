@@ -1,6 +1,6 @@
 # Runtify 기능 기획서
 
-> 작성일: 2026-03-04 / 최종 수정: 2026-05-05
+> 작성일: 2026-03-04 / 최종 수정: 2026-05-06
 > 규칙: **Figma 디자인 승인 → 코드 구현** 순서 필수
 > 관련 문서: [POLICY.md](POLICY.md) (운영 정책), [STATUS.md](STATUS.md) (현재 상황)
 > **완료 항목의 구현 detail은 git log + 코드 참조** — 이 문서는 미완료 / 의사결정 / 정책 중심
@@ -21,30 +21,6 @@
   - 구현: `running_page.dart` 시작 화면 상단 `WatchStatusBanner` 위젯, `flutter_blue_plus` 재연결, 세션 dismiss 플래그(Riverpod, 영속 X)
   - 파일: `lib/features/running/presentation/pages/running_page.dart`, `lib/features/running/presentation/widgets/watch_status_banner.dart` (신규)
 
-- [ ] **[러닝v2] 자동 저장 (crash 복구) (2026-04-28 추가)** — 60분
-  - 정책: 30초마다 진행 중 러닝을 SharedPreferences에 백업. 앱 강제 종료/크래시 후 재실행 시 복구 다이얼로그
-  - 구현: `RunningProvider` 30초 주기 Timer로 `running_in_progress_backup` 키에 JSON 저장, 정상 종료 시 키 삭제, 앱 시작 시 백업 키 확인 → 복구/버리기 다이얼로그
-  - 파일: `lib/features/running/presentation/providers/running_provider.dart`, `lib/core/services/running_backup.dart` (신규), `lib/features/home/presentation/pages/home_page.dart`
-
-- [ ] **[러닝v2] 랩(Lap) 기능 — 1km 자동 분할 (2026-04-28 추가)** — 60분
-  - 정책: 1km 단위 자동 랩 — 각 랩의 시간/페이스/심박수 평균 기록. 결과 페이지에 랩 테이블 표시
-  - 구현: `LapData` 클래스 신설, `RunningSessionEntity.laps: List<LapData>`, `RunningProvider` 거리 listener에서 1km 통과 시 랩 분할
-  - 파일: `lib/features/running/domain/entities/lap_data.dart` (신규), `lib/features/running/presentation/widgets/lap_table.dart` (신규), 외 4개
-
-- [ ] **[러닝v2] GPS 신호 강도 표시 (2026-04-28 추가)** — 50분
-  - 정책: 시작 화면 상단 GPS 신호 강도 배지 — 좋음(accuracy ≤ 10m) / 보통(≤ 25m) / 약함(> 25m). 약함 상태 시작 시 경고 배너(시작은 가능)
-  - 구현: `GpsSignalProvider` (geolocator 첫 fix accuracy 분류 StreamProvider), `running_page.dart` 시작 전 화면에 배지
-  - 파일: `lib/core/providers/gps_signal_provider.dart` (신규), `lib/features/running/presentation/pages/running_page.dart`
-
-- [ ] **[러닝v2] 잠금 화면 (실수 터치 방지) (2026-04-28 추가)** — 50분
-  - 정책: 러닝 중 화면 잠금 토글 — 해제는 위로 길게 스와이프(2초+ vertical drag). 잠금 중 일시정지·종료 비활성
-  - 구현: `running_page.dart` 우측 상단 자물쇠 토글, `IgnorePointer` + 반투명 오버레이, `GestureDetector` vertical drag 감지
-  - 파일: `lib/features/running/presentation/pages/running_page.dart`, `lib/features/running/presentation/widgets/lock_overlay.dart` (신규)
-
-- [ ] **[러닝v2] 주간·월간 통계 페이지 (2026-04-28 추가)** — 80분
-  - 정책: 캘린더와 별도 통계 페이지 — 주간/월간 탭, 합계 거리·평균 페이스·러닝 횟수·변화 추이 그래프
-  - 구현: `running_section_page.dart` 탭에 "통계" 추가, `stats_page.dart` 신설, `fl_chart` 활용 (결과 통계 강화와 패키지 공유)
-  - 파일: `lib/features/running/presentation/pages/stats_page.dart` (신규), `lib/features/running/presentation/widgets/stats_chart.dart` (신규)
 
 - [ ] **[러닝v1] 일시정지/재시작 기능 (Phase 2 — 2026-04-28 추가)** — 70분
   - 정책: Strava/Nike 표준 — 일시정지 중 GPS·시간·거리 모두 멈춤. 재시작 시 누적 데이터 보존
@@ -55,15 +31,6 @@
   - 정책: 속도 < 0.5 m/s가 5초+ 지속 시 자동 일시정지. > 1.0 m/s 회복 시 자동 재시작. Profile 토글 (기본 ON)
   - 구현: `RunningProvider`에 임계값 + debounce timer, 위 일시정지 기능과 통합
 
-- [ ] **[러닝v1] 1km 단위 음성 안내 (TTS) (Phase 2 — 2026-04-28 추가)** — 50분
-  - 정책: 매 1km 통과 시 음성 — "N km 통과, 페이스 X분 Y초, 평균 심박수 Z". Profile 토글 (기본 ON, km)
-  - 구현: `pubspec.yaml`에 `flutter_tts` 추가, `running_voice_announcer.dart` 신설, `RunningProvider` 거리 listener
-  - 파일: `lib/core/services/running_voice_announcer.dart` (신규), 외 2개
-
-- [ ] **[러닝v1] 결과 페이지 통계 강화 (차트) (Phase 2 — 2026-04-28 추가)** — 90분
-  - 정책: Strava/Nike 표준 — 페이스 라인 차트 + 고도 영역 차트 + 심박수 영역 차트. 탭 전환
-  - 구현: `pubspec.yaml`에 `fl_chart` 추가, `running_session_entity`에 `paceSamples/elevationSamples/heartRateSamples` 샘플링(10초 또는 100m 간격), `running_result_page.dart`에 3개 차트 탭
-  - 파일: `lib/features/running/presentation/widgets/{pace,elevation,heart_rate}_chart.dart` (각 신규), 외 2개
 
 - [ ] **[가입 UX] 이메일 인증 Deep Link → 앱 자동 진입 (2026-04-27 추가)** — 60분 (Flutter 측만)
   - 현재: 인증 메일 링크 클릭 → Firebase 웹 페이지에서 "verified". 앱 다시 열어 "인증 완료 확인" 버튼 눌러야 반영
@@ -103,6 +70,14 @@
 
 #### 완료 (한 줄 요약, 상세는 git log)
 
+- [x] **🌙 [입력 검증] 목표 입력 극단값 차단** (2026-05-06) — 야간 PM 발견 갭. `GoalTypeExtension.maxAllowedValue` + `validateInputValue`, `_AddGoalBottomSheet` errorText 즉시 피드백 (주간 200km/월간 800km/주간 21회/streak 365일). 153 tests pass
+- [x] **🌙 [러닝v1] 1km 음성 안내 (TTS)** (2026-05-06) — `flutter_tts` 추가, `RunningVoiceAnnouncer` (한국어, formatAnnouncement 단위 테스트), Profile 토글(기본 ON, SharedPreferences). 147 tests pass
+- [x] **🌙 [러닝v1] 결과 페이지 차트 강화** (2026-05-06) — `RunningSample` 10초 샘플링, `SessionChartCard` (페이스/고도/심박 탭, 페이스 Y축 반전, 0값 무시). result/detail 페이지 통합. 139 tests pass
+- [x] **🌙 [러닝v2] 주간·월간 통계 페이지** (2026-05-06) — `fl_chart` 추가, 4번째 탭 "통계", `StatsSummary.aggregate` 순수 함수(주간 일별/월간 주차별), 거리 가중 평균 페이스. 136 tests pass
+- [x] **🌙 [러닝v2] GPS 신호 강도 표시** (2026-05-06) — `gpsSignalProvider` autoDispose StreamProvider, `classifyAccuracy` (≤10m good/≤25m ok/>weak), 시작 전 우측 상단 배지, 약함 시 경고 다이얼로그. 129 tests pass
+- [x] **🌙 [러닝v2] 랩(Lap) 기능 — 1km 자동 분할** (2026-05-06) — `LapData` 엔티티(km/splitSeconds/pace/avgHeartRate), `LapTable` 위젯(가장 빠른 랩 강조), 백업 스냅샷 + 모델 직렬화. 122 tests pass
+- [x] **🌙 [러닝v2] 잠금 화면 (실수 터치 방지)** (2026-05-06) — `LockSwipeTracker`(거리·시간 동시 100px+/2초+, 아래로 이동 시 리셋), `LockOverlay` Positioned.fill + opaque 흡수. 116 tests pass
+- [x] **🌙 [러닝v2] 자동 저장 (crash 복구)** (2026-05-06) — `RunningBackup` 30초 주기 SharedPreferences, `RunningRecoveryHandler` 홈에서 첫 build 후 다이얼로그(저장/버리기), 0.1km/60초 미만 노이즈 필터. 107 tests pass
 - [x] **[러닝/GPS] 알림 권한 거부 시 GPS stream 죽는 이슈 + 자동 재구독** (2026-05-03) — `_subscribePositionStream` 헬퍼, onError 1s/2s/4s backoff (max 3회). 부수 픽스: `android/app/build.gradle.kts` Properties import. 99 tests pass. ⚠️ 실기기 검증 필수
 - [x] **[온보딩/UX] AsyncValue 에러 메시지 정리 + 공통 ErrorView 위젯** (2026-04-28) — `friendly_error.dart` + `error_view.dart`, 16개 페이지 적용. 93 tests pass
 - [x] **[러닝v2] 개인 최고 기록(PB) 자동 추적** (2026-04-28) — 5종 거리(1k/5k/10k/하프/풀), `personal_record_service.dart`, Firestore subcollection, result/profile 배너. 99 tests pass
@@ -131,6 +106,22 @@
 - [x] **[가입 UX] OAuth 가입자 닉네임 처리** (2026-04-24) — Google displayName 그대로, 추가 작업 없음
 
 ### 🟡 기획 확정 대기 (사용자 검토 후 구현)
+
+- [ ] **🌙 [네트워크] Firebase call timeout 부재 (2026-05-06 야간 발견)**
+  - 현재: `flutter_local_notifications.requestPermission()` 외에는 timeout 없음. 네트워크 끊긴 환경에서 saveSession/조회 호출이 무한 대기 가능
+  - 결정 필요: timeout을 어디에 걸지 (a) Firebase 모든 call에 30초 (b) 인증 등 빠른 피드백 필요한 곳만 10초 (c) 변경 없이 Firebase SDK retry에 의존
+  - 결정 후 작업: 헬퍼 `withTimeout(...)` + 호출부 적용 (예상 60분)
+  - 근거: 정상 트랜잭션이 timeout으로 끊기면 데이터 유실 위험 → 보수적 결정 필요
+
+- [ ] **🌙 [기능] 닉네임 사후 변경 (2026-05-06 야간 발견)**
+  - 현재: 가입 시 1회만 입력, 이후 변경 불가. 기존 NicknameAvailability 검증 로직은 가입 페이지에만 연결
+  - 결정 필요: (a) 30일 1회 제한 (b) 무제한 변경 (c) 변경 안 함 (Strava/Nike 정책 비교 필요)
+  - 결정 후 작업: profile_page에 변경 다이얼로그 + 닉네임 변경 가드 + 변경 이력 (예상 90분)
+
+- [ ] **🌙 [데이터] Wakelock 일관성 (2026-05-06 야간 발견)**
+  - 현재: `ForegroundNotificationConfig.enableWakeLock: true`만 적용. 알림 권한 거부 시 wakelock 안 걸림 → 화면 꺼지면 GPS 정확도 저하 가능
+  - 결정 필요: `wakelock_plus` 패키지 도입 vs 알림 권한 안내만 강화
+  - 결정 후 작업 (a 시): wakelock_plus 추가 + 러닝 시작 시 acquire/dispose. (예상 50분, 라이프사이클 위험 → 실기기 검증 필수)
 
 - [ ] **[접근성] Semantics 라벨 + textScaler — 운영 단계로 연기 (2026-04-28 결정)**
   - 출시 후 사용자 1만 명 도달 시점에 시작 — MVP에서는 도입 안 함
