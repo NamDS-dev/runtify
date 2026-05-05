@@ -1203,10 +1203,21 @@ class _AddGoalBottomSheetState extends ConsumerState<_AddGoalBottomSheet> {
     super.dispose();
   }
 
-  // 저장 버튼 활성화 조건: 유형 선택 + 수치 > 0
+  // 입력값 검증 결과 (null = 통과 / String = 에러 메시지)
+  String? get _validationError {
+    if (_selectedType == null) return null;
+    final value = double.tryParse(_targetController.text);
+    if (value == null) {
+      return _targetController.text.isEmpty ? null : '숫자를 입력해주세요';
+    }
+    return _selectedType!.validateInputValue(value);
+  }
+
+  // 저장 버튼 활성화 조건: 유형 선택 + 수치 검증 통과 + 입력 비어있지 않음
   bool get _canSave {
-    final value = double.tryParse(_targetController.text) ?? 0.0;
-    return _selectedType != null && value > 0;
+    if (_selectedType == null) return false;
+    if (_targetController.text.isEmpty) return false;
+    return _validationError == null;
   }
 
   // 목표 저장 처리
@@ -1338,27 +1349,28 @@ class _AddGoalBottomSheetState extends ConsumerState<_AddGoalBottomSheet> {
           const SizedBox(height: 16),
 
           // 목표 수치 입력 필드 (Figma: h=52, r=12, bg #252525)
-          SizedBox(
-            height: 52,
-            child: TextField(
-              controller: _targetController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
-                filled: true,
-                fillColor: const Color(0xFF252525),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                suffixText: _selectedType?.unit,
-                suffixStyle: const TextStyle(color: Color(0xFF9E9E9E)),
+          // 높이 고정 제거 — errorText 표시 시 컨테이너가 자동으로 늘어나도록
+          TextField(
+            controller: _targetController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
+              filled: true,
+              fillColor: const Color(0xFF252525),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
-              onChanged: (_) => setState(() {}),
+              suffixText: _selectedType?.unit,
+              suffixStyle: const TextStyle(color: Color(0xFF9E9E9E)),
+              // 상한 초과 / 음수 등 즉시 안내
+              errorText: _validationError,
+              errorStyle: const TextStyle(color: Color(0xFFFF3333), fontSize: 11),
             ),
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 16),
 

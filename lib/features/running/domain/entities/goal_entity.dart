@@ -44,6 +44,35 @@ extension GoalTypeExtension on GoalType {
         return '일';
     }
   }
+
+  // 합리적 입력 상한 — 비현실적 값(예: 9999km) 차단용
+  // 기준: 엘리트 러너 상위치 약간 + 안전 여유
+  // - 주간 200km (Strava 상위 1% ≈ 100~150km)
+  // - 월간 800km
+  // - 주간 횟수 21회 (3회/일 × 7일)
+  // - 연속 달리기 365일
+  double get maxAllowedValue {
+    switch (this) {
+      case GoalType.weeklyDistance:
+        return 200;
+      case GoalType.monthlyDistance:
+        return 800;
+      case GoalType.weeklyCount:
+        return 21;
+      case GoalType.streak:
+        return 365;
+    }
+  }
+
+  // 입력 검증 — null 반환 시 통과, 문자열 반환 시 에러 메시지
+  // value 가 음수/0 → 에러, 상한 초과 → 에러
+  String? validateInputValue(double value) {
+    if (value <= 0) return '0보다 큰 값을 입력해주세요';
+    if (value > maxAllowedValue) {
+      return '$label는 최대 ${maxAllowedValue.toStringAsFixed(0)}$unit까지 설정할 수 있어요';
+    }
+    return null;
+  }
 }
 
 // 개인 러닝 목표 엔티티 (순수 Dart — Equatable 미사용)
