@@ -7,6 +7,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import '../../../../core/services/running_backup.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/heart_rate_ble_datasource.dart';
@@ -58,6 +59,10 @@ class _RunningPageState extends ConsumerState<RunningPage>
   int _gpsRestartAttempts = 0;
   static const int _gpsMaxRestartAttempts = 3;
   final List<int> _hrReadings = []; // 평균 심박수 계산용
+
+  // 진행 중 러닝 백업 (앱 강제 종료/크래시 복구) — 30초 주기
+  final RunningBackup _backup = RunningBackup();
+  Timer? _backupTimer;
 
   // GPS 권한 확인 및 요청
   Future<bool> _requestLocationPermission() async {
@@ -132,6 +137,12 @@ class _RunningPageState extends ConsumerState<RunningPage>
       } catch (_) {
         // 알림 서비스 이슈(권한/플랫폼 미지원)는 무시
       }
+    });
+
+    // 30초마다 진행 상태 백업 — 앱 강제 종료/크래시 복구용
+    _backupTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!_isRunning) return;
+      _backup.save(_currentBackupSnapshot());
     });
 
     // BLE 심박수 스캔 시작 — 실기기에서 권한/지원 이슈로 실패해도 러닝은 계속 진행
@@ -267,8 +278,35 @@ class _RunningPageState extends ConsumerState<RunningPage>
     );
   }
 
+  // 현재 진행 상태를 백업 스냅샷으로 변환
+  RunningBackupSnapshot _currentBackupSnapshot() {
+    final avgHr = _hrReadings.isNotEmpty
+        ? _hrReadings.reduce((a, b) => a + b) / _hrReadings.length
+        : 0.0;
+    return RunningBackupSnapshot(
+      startTime: _startTime,
+      distanceKm: _distanceKm,
+      durationSeconds: _elapsedSeconds,
+      avgHeartRate: avgHr,
+      routePoints: _routePoints
+          .map((p) => [p.latitude, p.longitude])
+          .toList(),
+      splitPaces: _splitPaces
+          .map((s) => [s.km.toDouble(), s.pace])
+          .toList(),
+      lastLat: _lastPosition?.latitude,
+      lastLng: _lastPosition?.longitude,
+      firstLat: _firstPosition?.latitude,
+      firstLng: _firstPosition?.longitude,
+    );
+  }
+
   Future<void> _stopRun() async {
     _timer?.cancel();
+    _backupTimer?.cancel();
+    _backupTimer = null;
+    // 정상 종료 — 백업 키 삭제 (저장 성공/실패와 무관, 러닝은 끝남)
+    await _backup.clear();
     await _positionSubscription?.cancel();
     _positionSubscription = null;
     await _hrDataSource.stop();
@@ -483,6 +521,7 @@ class _RunningPageState extends ConsumerState<RunningPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _backupTimer?.cancel();
     _positionSubscription?.cancel();
     _mapController.dispose();
     _hrDataSource.dispose();
@@ -799,6 +838,10 @@ class _RunningPageState extends ConsumerState<RunningPage>
             TextButton(
               onPressed: () async {
                 _timer?.cancel();
+                _backupTimer?.cancel();
+                _backupTimer = null;
+                // 사용자가 명시적으로 나가는 경우도 백업 삭제
+                await _backup.clear();
                 await _positionSubscription?.cancel();
                 await _hrDataSource.stop();
                 await _notificationService.cancel();

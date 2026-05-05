@@ -9,6 +9,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../crew/presentation/providers/crew_provider.dart';
 import '../../data/datasources/health_connect_datasource.dart';
 import '../providers/running_provider.dart';
+import '../widgets/running_recovery_handler.dart';
 import '../widgets/stats_overview_widget.dart';
 
 // 홈 허브 화면 — Runtify 전체 진입점
@@ -61,6 +62,9 @@ class HomePage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 진행 중이던 러닝 백업이 있으면 복구 다이얼로그 (보이지 않음)
+                  if (!kIsWeb) RunningRecoveryHandler(userId: user.id),
+
                   // 인사말 + 스트릭 배지
                   _GreetingSection(name: user.name, streak: user.streak),
                   const SizedBox(height: 12),
