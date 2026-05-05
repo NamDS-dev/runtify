@@ -22,3 +22,10 @@ class AppEnv {
   // 환경 라벨 (로그/디버깅용)
   static String get label => _flavor.toUpperCase();
 }
+
+// 기능 플래그 (출시 단계별 토글)
+class FeatureFlags {
+  // 리워드 스토어 — 1차 출시에서는 숨김 (사업자 등록·통신판매업 신고 후 활성화 예정)
+  // 코드/라우트는 유지, UI 진입점(BottomNav 5번째 탭, 홈 배너)만 차단
+  static const bool rewardEnabled = false;
+}

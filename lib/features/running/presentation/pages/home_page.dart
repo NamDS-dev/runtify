@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/config/app_env.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -101,9 +102,11 @@ class HomePage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // 리워드 포인트 배너
-                  _RewardBanner(points: user.points),
-                  const SizedBox(height: 12),
+                  // 리워드 포인트 배너 (FeatureFlags.rewardEnabled 시만 노출)
+                  if (FeatureFlags.rewardEnabled) ...[
+                    _RewardBanner(points: user.points),
+                    const SizedBox(height: 12),
+                  ],
 
                   // 워치 동기화 카드 (모바일 + Health Connect 권한 있을 때만)
                   if (!kIsWeb) _WatchSyncCard(userId: user.id),

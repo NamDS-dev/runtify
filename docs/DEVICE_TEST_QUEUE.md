@@ -59,14 +59,21 @@
 
 ### Android
 
-- [ ] **[버그] Android 러닝 중 GPS 거리 0km (2026-04-19)**
-  - 변경: `running_page.dart` GPS accuracy 필터 완화 (20m → 초기 10초 면제 + 이후 50m), `AndroidSettings` + `foregroundNotificationConfig` 적용, `AndroidManifest.xml`에 `ACCESS_BACKGROUND_LOCATION` + `FOREGROUND_SERVICE_LOCATION` 추가
+- [ ] **🔴 [버그] Android 러닝 중 GPS 거리 0km — 알림 권한 + onError 재구독 픽스 (2026-05-03 수정, 가장 핵심)**
+  - 변경 (2026-05-03): `running_page.dart`
+    - 알림 권한을 GPS stream 시작 전 await (3초 timeout) — 이전엔 fire-and-forget이라 권한 거부 상태에서 `ForegroundNotificationConfig`가 foreground service 시작 실패 → stream 즉시 onError로 죽음
+    - 권한 거부 시 `ForegroundNotificationConfig` null 처리 (foreground service 시도 안 함)
+    - onError 발생 시 1s/2s/4s backoff로 자동 재구독 (max 3회), 정상 이벤트 수신 시 카운터 리셋
+    - 부수 픽스: `android/app/build.gradle.kts` Properties/FileInputStream 명시적 import (빌드 차단 해결)
   - 재현/검증 절차:
-    1. 야외에서 앱 실행 → 러닝 시작
-    2. 최소 100m 이상 실제 이동
-    3. **거리 카운트가 0km가 아닌 값으로 증가**하는지 확인
+    1. **앱 첫 실행 시나리오 (가장 중요)**: 앱 새로 설치 → 러닝 시작 → 권한 다이얼로그(GPS, 알림) 모두 허용 → 야외 100m+ 실제 이동 → 거리 정상 카운트 확인
+    2. **알림 거부 시나리오**: 앱 재설치 → 러닝 시작 → GPS는 허용, **알림은 거부** → 야외 100m+ 이동 → 거리 정상 카운트 (foreground 알림은 안 떠도 GPS는 살아 있어야 함)
+    3. **이미 권한 부여된 시나리오**: 위 1번 후 앱 재시작 → 러닝 시작 → 권한 다이얼로그 없이 즉시 GPS 시작 + 거리 카운트
     4. 지도에 경로 polyline 그려지는지 확인
     5. 화면 꺼진 상태로 1분 이동 → 복귀 시 거리 지속 누적 여부 확인
+    6. **재구독 동작 확인 (옵션)**: 비행기 모드 ON → 러닝 시작 → "GPS 신호 재연결 중... (n/3)" 메시지 표시 → 비행기 모드 OFF → 자동 복구
+  - 관련 커밋: `13eaac7`
+  - 이전 시도: `running_page.dart` accuracy 필터 완화, `foregroundNotificationConfig` 적용, `AndroidManifest.xml` 권한 추가
 
 ### 공통
 
@@ -77,6 +84,26 @@
     1. 워치 심박수 센서 활성
     2. Runtify 러닝 시작
     3. BLE 자동 스캔/연결 → 실시간 심박수 표시 확인
+
+- [ ] **[UX] 리워드 메뉴 숨김 검증 (2026-05-05)**
+  - 변경: `FeatureFlags.rewardEnabled = false` — 1차 출시에서는 사업자/통신판매업 미등록 상태라 숨김
+  - 재현/검증 절차:
+    1. 앱 실행 → 홈 화면 진입
+    2. **하단 탭이 4개**(홈/러닝/크루/랭킹)인지 확인 — 5번째 "리워드" 탭 없어야 함
+    3. **홈 화면 본문에 "리워드 포인트 1,230P" 배너 안 보여야 함** (크루/지역 미니카드 + 워치 동기화 + 통계만)
+    4. 라우트는 코드상 유지됨 — 외부 노출 차단만, dev에서 `/reward` 직접 입력 시 페이지는 동작 (확인 옵션)
+  - 관련 커밋: 다음 commit 예정
+  - 활성화 시점: 사업자 등록 + 통신판매업 신고 후 `app_env.dart`에서 `rewardEnabled = true`
+
+- [ ] **[회귀] 정리 작업 후 기본 플로우 smoke test (2026-05-05)**
+  - 배경: md 정리 + GPS 픽스 + 리워드 숨김 commit 후 기본 동작 회귀 점검
+  - 재현/검증 절차:
+    1. **로그인 플로우**: 이메일 로그인 → 홈 도달 (또는 신규 계정 → 홈 지역 온보딩 → 건너뛰기 → 홈)
+    2. **홈 화면**: 상단 인사 + 레벨 바 + "러닝 시작하기" CTA + 크루/지역 미니카드 + 워치 동기화 + 통계 카드 표시
+    3. **러닝 시작 → 종료**: 시작 → 거리 누적 → 종료 → 결과 페이지 → 홈 복귀
+    4. **크루/랭킹 탭 진입**: 데이터 정상 표시
+    5. **프로필 페이지**: 프로필 아바타 탭 → 레벨/배지/지역/테마/로그아웃 표시
+    6. **로그아웃**: 정상 동작 → 로그인 화면 복귀
 
 ---
 
