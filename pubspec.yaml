@@ -78,6 +78,7 @@ dependencies:
   dartz: ^0.10.1
   shared_preferences: ^2.3.5  # 테마 설정 영구 저장
   url_launcher: ^6.3.2
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:

@@ -14,6 +14,7 @@ import '../widgets/running_session_card.dart';
 import '../widgets/stats_overview_widget.dart';
 import '../../domain/entities/goal_entity.dart';
 import '../../domain/entities/running_session_entity.dart';
+import 'stats_page.dart';
 
 // 러닝 섹션 화면 — 러닝 전용 허브 (기록/캘린더/목표 내부 탭)
 class RunningSectionPage extends ConsumerWidget {
@@ -37,7 +38,7 @@ class RunningSectionPage extends ConsumerWidget {
         }
 
         return DefaultTabController(
-          length: 3,
+          length: 4,
           child: Scaffold(
             appBar: AppBar(
               title: const Text('러닝'),
@@ -48,6 +49,7 @@ class RunningSectionPage extends ConsumerWidget {
                 tabs: const [
                   Tab(text: '기록'),
                   Tab(text: '캘린더'),
+                  Tab(text: '통계'),
                   Tab(text: '목표'),
                 ],
               ),
@@ -60,6 +62,8 @@ class RunningSectionPage extends ConsumerWidget {
                 _HistoryTab(userId: user.id),
                 // 캘린더 탭: Phase 3.5 구현 완료
                 _CalendarTab(userId: user.id),
+                // 통계 탭: 주간/월간 합계 + 막대 그래프
+                StatsPage(userId: user.id),
                 // 목표 탭: 추후 구현
                 const _GoalsTab(),
               ],
