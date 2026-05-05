@@ -7,6 +7,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import '../../../../core/providers/gps_signal_provider.dart';
 import '../../../../core/services/running_backup.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -99,6 +100,36 @@ class _RunningPageState extends ConsumerState<RunningPage>
     setState(() => _gpsError = null);
     final hasPermission = await _requestLocationPermission();
     if (!hasPermission) return;
+
+    // GPS 신호가 weak 일 때 경고만 — 시작은 허용 (사용자가 인지하고 시작 결정)
+    final signal = ref.read(gpsSignalProvider).valueOrNull;
+    if (signal == GpsSignalLevel.weak && mounted) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: ctx.colors.surface,
+          title: Text('GPS 신호가 약해요',
+              style: TextStyle(color: ctx.colors.textPrimary)),
+          content: Text(
+            '거리 측정이 부정확할 수 있어요. 야외 개방된 곳에서 시작하면 더 정확한 기록이 가능합니다.',
+            style: TextStyle(color: ctx.colors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text('취소',
+                  style: TextStyle(color: ctx.colors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('그래도 시작',
+                  style: TextStyle(color: AppTheme.primary)),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+    }
 
     // 알림 권한을 GPS stream 시작 전에 먼저 await — Android 13+에서 알림 권한 없으면
     // ForegroundNotificationConfig가 foreground service 시작에 실패해 stream이
@@ -654,6 +685,14 @@ class _RunningPageState extends ConsumerState<RunningPage>
               ),
             ),
 
+          // 시작 전 GPS 신호 강도 배지 — 러닝 시작 시 자동 dispose (autoDispose)
+          if (!_isRunning)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              right: 16,
+              child: const _GpsSignalBadge(),
+            ),
+
           // 잠금 오버레이 — 활성 시 모든 하위 터치 차단, 위로 길게 스와이프(2초+)로만 해제
           if (_isLocked)
             Positioned.fill(
@@ -918,6 +957,65 @@ class _RunningPageState extends ConsumerState<RunningPage>
     } else {
       context.go('/home');
     }
+  }
+}
+
+// ─── GPS 신호 강도 배지 ─────────────────────────────────────────────────────
+// 시작 전 화면 우측 상단 — 좋음(녹색)/보통(노랑)/약함(빨강)/탐색 중(회색)
+class _GpsSignalBadge extends ConsumerWidget {
+  const _GpsSignalBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncSignal = ref.watch(gpsSignalProvider);
+    final level = asyncSignal.valueOrNull ?? GpsSignalLevel.unknown;
+
+    final ({Color color, IconData icon, String label}) view = switch (level) {
+      GpsSignalLevel.good => (
+          color: Colors.green,
+          icon: Icons.gps_fixed,
+          label: 'GPS 좋음',
+        ),
+      GpsSignalLevel.ok => (
+          color: Colors.orange,
+          icon: Icons.gps_not_fixed,
+          label: 'GPS 보통',
+        ),
+      GpsSignalLevel.weak => (
+          color: Colors.red,
+          icon: Icons.gps_off,
+          label: 'GPS 약함',
+        ),
+      GpsSignalLevel.unknown => (
+          color: Colors.grey,
+          icon: Icons.gps_not_fixed,
+          label: 'GPS 탐색 중',
+        ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: view.color.withValues(alpha: 0.7)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(view.icon, color: view.color, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            view.label,
+            style: TextStyle(
+              color: view.color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
