@@ -57,6 +57,10 @@ class RunningSessionEntity extends Equatable {
   // Firestore 미저장, 결과 화면 🏆 배너 표시용
   final List<String> newPersonalRecords;
 
+  // 이번 세션으로 도달한 새 레벨 (이전 < 새 레벨 시에만 set)
+  // Firestore 미저장, 결과 화면 LevelUpDialog 트리거용
+  final int? levelUpTo;
+
   // 사용자가 부여한 제목·메모 (러닝 종료 후 또는 기록 상세에서 편집 가능)
   final String? title;
   final String? memo;
@@ -98,6 +102,7 @@ class RunningSessionEntity extends Equatable {
     this.memo,
     this.laps = const [],
     this.samples = const [],
+    this.levelUpTo,
   });
 
   bool get isCompleted => endTime != null;

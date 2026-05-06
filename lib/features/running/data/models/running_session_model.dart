@@ -39,6 +39,7 @@ class RunningSessionModel extends RunningSessionEntity {
     super.memo,
     super.laps,
     super.samples,
+    super.levelUpTo,
   });
 
   factory RunningSessionModel.fromFirestore(
@@ -160,10 +161,16 @@ class RunningSessionModel extends RunningSessionEntity {
     return _copy(newPersonalRecords: prKeys);
   }
 
+  // 도달한 새 레벨을 추가한 새 인스턴스 반환 (LevelUpDialog 트리거)
+  RunningSessionModel copyWithLevelUpTo(int newLevel) {
+    return _copy(levelUpTo: newLevel);
+  }
+
   // 내부 복제 헬퍼 — 모든 필드 보존, 변경할 부분만 override
   RunningSessionModel _copy({
     List<String>? newBadgeIds,
     List<String>? newPersonalRecords,
+    int? levelUpTo,
   }) {
     return RunningSessionModel(
       id: id,
@@ -195,6 +202,7 @@ class RunningSessionModel extends RunningSessionEntity {
       memo: memo,
       laps: laps,
       samples: samples,
+      levelUpTo: levelUpTo ?? this.levelUpTo,
     );
   }
 }

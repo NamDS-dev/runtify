@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/services/analytics_events.dart';
+import '../../../../core/services/level_calculator.dart';
 import '../../../../core/services/personal_record_service.dart';
 import '../models/running_session_model.dart';
 import 'badge_firestore_datasource.dart';
@@ -66,6 +67,9 @@ class RunningFirestoreDataSource implements RunningDataSource {
     // 배지 체크용 변수 (트랜잭션 내부에서 캡처)
     int capturedStreak = 0;
     double capturedTotalDistance = 0;
+    // 레벨업 캡처 (currentLevel -> newLevel) — 트랜잭션 외부에서 session 에 주입
+    int capturedNewLevel = 0;
+    int capturedPrevLevel = 0;
 
     await _firestore.runTransaction((transaction) async {
       final sessionRef = _sessionsRef.doc(session.id);
@@ -146,8 +150,12 @@ class RunningFirestoreDataSource implements RunningDataSource {
       final finalExp = finalPoints; // EXP = 포인트와 동일
 
       // ── 레벨 재계산 ─────────────────────────────────────────────
+      // 2026-05-06: 단순 100당 1레벨 → 지수 공식 (LevelCalculator) 전환
       final newExp = currentExp + finalExp;
-      final newLevel = (newExp ~/ 100) + 1;
+      final prevLevel = LevelCalculator.levelFromTotalExp(currentExp);
+      final newLevel = LevelCalculator.levelFromTotalExp(newExp);
+      capturedPrevLevel = prevLevel;
+      capturedNewLevel = newLevel;
 
       // ── 러닝 세션 저장 (보정된 포인트로 덮어씀) ─────────────────
       final sessionData = session.toFirestore()
@@ -294,6 +302,18 @@ class RunningFirestoreDataSource implements RunningDataSource {
       }
     } catch (_) {
       // PB 체크 실패도 흐름 차단 X
+    }
+
+    // ── 레벨업 발생 시 session 에 levelUpTo 주입 + Analytics 발화 ──
+    if (capturedNewLevel > capturedPrevLevel) {
+      session = session.copyWithLevelUpTo(capturedNewLevel);
+      AnalyticsEvents.log(
+        AnalyticsEvents.levelUp,
+        params: {
+          'level': capturedNewLevel,
+          'prev_level': capturedPrevLevel,
+        },
+      );
     }
 
     // Analytics — 러닝 저장 성공 시점에 발화 (Firebase 호출 실패해도 silent)

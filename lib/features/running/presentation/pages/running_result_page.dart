@@ -13,7 +13,9 @@ import '../../../course/domain/entities/course_entity.dart';
 import '../../domain/entities/badge_entity.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
+import '../../../../core/services/level_calculator.dart';
 import '../widgets/lap_table.dart';
+import '../widgets/level_up_dialog.dart';
 import '../widgets/session_chart_card.dart';
 
 // 러닝 완료 결과 화면 (stopRun 후 표시)
@@ -40,6 +42,7 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
   String? _confirmedGu; // 사용자가 선택한 구 (null = 미선택)
   bool _isSavingConfirm = false; // 컨펌 후 저장 중 여부
   bool _badgePopupShown = false; // 배지 팝업 표시 여부
+  bool _levelUpPopupShown = false; // 레벨업 다이얼로그 표시 여부
 
   @override
   void initState() {
@@ -47,6 +50,7 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
     // 배지 팝업: 세션에 새 배지가 있으면 빌드 후 표시
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showBadgePopupIfNeeded();
+      _showLevelUpDialogIfNeeded();
     });
     // 가설 2 검증 — 결과 페이지 진입 시각 기록 (다음 _startRun에서 차이 계산)
     _recordResultViewedAt();
@@ -63,6 +67,25 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
     } catch (_) {
       // SharedPreferences 실패는 무시 — 분석 데이터일 뿐
     }
+  }
+
+  // 레벨업 발생 시 모달 (가설 2)
+  void _showLevelUpDialogIfNeeded() {
+    if (_levelUpPopupShown) return;
+    final session = widget.session;
+    if (session == null || session.levelUpTo == null) return;
+    _levelUpPopupShown = true;
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.8),
+      builder: (_) => LevelUpDialog(
+        newLevel: session.levelUpTo!,
+        // 칭호는 다음 task #12 에서 연결 — 현재 null
+        title: null,
+        expToNextLevel:
+            LevelCalculator.expRequiredForLevelUp(session.levelUpTo!),
+      ),
+    );
   }
 
   // 새로 획득한 배지가 있으면 팝업 표시
@@ -415,6 +438,7 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
         splitPaces: original.splitPaces,
         laps: original.laps,
         samples: original.samples,
+        levelUpTo: original.levelUpTo,
         regionSi: original.regionSi,
         regionGu: original.regionGu,
         regionDong: original.regionDong,
