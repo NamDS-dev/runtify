@@ -53,6 +53,36 @@
   - [ ] 홈 상단 "동기화 대기 N건" 배너 위젯
   - [ ] 이메일 인증 가드와 큐 공유
 
+- [ ] **[네트워크] Firebase 호출 timeout 30초 적용 (2026-05-06 결정)** — 60분
+  - 결정: **모든 Firebase call 30초 timeout** (보수적 — 데이터 유실 방지)
+  - 구현: `lib/core/utils/firebase_timeout.dart` 신설 — `withFirebaseTimeout<T>(Future<T>)` 헬퍼 (TimeoutException 발생 시 명확한 에러 메시지로 변환)
+  - 호출부 적용: `auth_firebase_datasource.dart`, `running_firestore_datasource.dart`, `crew_firestore_datasource.dart`, `goal_firestore_datasource.dart`, `course_firestore_datasource.dart`, `regionStats` 관련 등
+  - 단위 테스트: timeout 시 친절 에러 메시지, 정상 흐름 통과
+  - 파일: `lib/core/utils/firebase_timeout.dart` (신규), 호출부 6개+
+
+- [ ] **[기능] 닉네임 사후 변경 — 30일 1회 제한 (2026-05-06 결정)** — 90분
+  - 결정: **30일 1회 변경 가능** (Strava 정책 참고, 악용/공격 방지 + UX 균형)
+  - 구현 체크리스트:
+    - [ ] `UserEntity`/`UserModel` 에 `nameChangedAt: DateTime?` 필드 추가, Firestore 양방향 직렬화
+    - [ ] `core/services/nickname_change_policy.dart` 신설 — `canChangeNickname(nameChangedAt) → bool`, `daysUntilChangeable(nameChangedAt) → int` (30일 윈도우 계산)
+    - [ ] `auth_firebase_datasource.changeNickname(uid, newName)` 추가 — 기존 `NicknameAvailability` 검증 재사용 + `nameChangedAt = now` 갱신
+    - [ ] `AuthRepository`/`AuthRemoteDataSource`/`AuthNotifier` 체인 노출
+    - [ ] `profile_page.dart`에 닉네임 옆 편집 아이콘 → `ChangeNicknameDialog` (검증 + 30일 미만 시 "X일 후 변경 가능" disabled 안내)
+    - [ ] 단위 테스트 (정책 함수 + UseCase)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - 파일: `lib/core/services/nickname_change_policy.dart` (신규), `lib/features/auth/presentation/widgets/change_nickname_dialog.dart` (신규), 외 5개
+
+- [ ] **[데이터] wakelock_plus 도입 (2026-05-06 결정)** — 50분
+  - 결정: **wakelock_plus 패키지 도입** (알림 권한 거부 시에도 화면 켜짐 보장 + GPS 정확도 보장)
+  - 구현 체크리스트:
+    - [ ] `pubspec.yaml`에 `wakelock_plus: ^1.x.x` 추가
+    - [ ] `running_page.dart` `_startRun()` 에서 `WakelockPlus.enable()`, `_stopRun()` + dispose에서 `WakelockPlus.disable()`
+    - [ ] try/catch로 미지원 플랫폼(웹)에서 폴백
+    - [ ] Profile에 "러닝 중 화면 켜짐 유지" 토글 추가 (기본 ON, SharedPreferences)
+    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
+  - ⚠️ **실기기 라이프사이클 검증 필수** — 백그라운드 진입/복귀 시 wakelock 상태 확인
+  - 파일: `pubspec.yaml`, `lib/features/running/presentation/pages/running_page.dart`, `lib/features/auth/presentation/pages/profile_page.dart`
+
 - [ ] **[계정] 회원 탈퇴 플로우 — Flutter 측 (2026-05-03 추가, POLICY § 4 기반)** — 180분
   - 분리 원칙: **Flutter 측은 야간 자동, Cloud Functions / 이메일 발송 / 약관 변호사 검토는 사용자 직접** (출시 직전 묶음)
   - 구현 체크리스트 (Flutter 측 야간):
@@ -106,22 +136,6 @@
 - [x] **[가입 UX] OAuth 가입자 닉네임 처리** (2026-04-24) — Google displayName 그대로, 추가 작업 없음
 
 ### 🟡 기획 확정 대기 (사용자 검토 후 구현)
-
-- [ ] **🌙 [네트워크] Firebase call timeout 부재 (2026-05-06 야간 발견)**
-  - 현재: `flutter_local_notifications.requestPermission()` 외에는 timeout 없음. 네트워크 끊긴 환경에서 saveSession/조회 호출이 무한 대기 가능
-  - 결정 필요: timeout을 어디에 걸지 (a) Firebase 모든 call에 30초 (b) 인증 등 빠른 피드백 필요한 곳만 10초 (c) 변경 없이 Firebase SDK retry에 의존
-  - 결정 후 작업: 헬퍼 `withTimeout(...)` + 호출부 적용 (예상 60분)
-  - 근거: 정상 트랜잭션이 timeout으로 끊기면 데이터 유실 위험 → 보수적 결정 필요
-
-- [ ] **🌙 [기능] 닉네임 사후 변경 (2026-05-06 야간 발견)**
-  - 현재: 가입 시 1회만 입력, 이후 변경 불가. 기존 NicknameAvailability 검증 로직은 가입 페이지에만 연결
-  - 결정 필요: (a) 30일 1회 제한 (b) 무제한 변경 (c) 변경 안 함 (Strava/Nike 정책 비교 필요)
-  - 결정 후 작업: profile_page에 변경 다이얼로그 + 닉네임 변경 가드 + 변경 이력 (예상 90분)
-
-- [ ] **🌙 [데이터] Wakelock 일관성 (2026-05-06 야간 발견)**
-  - 현재: `ForegroundNotificationConfig.enableWakeLock: true`만 적용. 알림 권한 거부 시 wakelock 안 걸림 → 화면 꺼지면 GPS 정확도 저하 가능
-  - 결정 필요: `wakelock_plus` 패키지 도입 vs 알림 권한 안내만 강화
-  - 결정 후 작업 (a 시): wakelock_plus 추가 + 러닝 시작 시 acquire/dispose. (예상 50분, 라이프사이클 위험 → 실기기 검증 필수)
 
 - [ ] **[접근성] Semantics 라벨 + textScaler — 운영 단계로 연기 (2026-04-28 결정)**
   - 출시 후 사용자 1만 명 도달 시점에 시작 — MVP에서는 도입 안 함
