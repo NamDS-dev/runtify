@@ -12,6 +12,7 @@ import '../../../../core/services/crashlytics_helper.dart';
 import '../../../../core/services/email_verification_rate_limiter.dart';
 import '../../../../core/services/login_rate_limiter.dart';
 import '../../../../core/services/nickname_availability.dart';
+import '../../../../core/services/push_notification_service.dart';
 import '../../../running/presentation/providers/running_in_progress_provider.dart';
 import '../../data/datasources/auth_firebase_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -72,6 +73,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
   final LoginRateLimiter _rateLimiter;
   // 러닝 진행 중 여부 조회용 — idTokenChanges 리스너에서 정책 § 3 가드 적용
   final Ref _ref;
+  // FCM 토큰 등록·해제 (가설 1 검증, 2026-05-06)
+  final PushNotificationService _pushNotificationService;
 
   // Firebase Auth 토큰/세션 변화 구독 — 러닝 중 강제 로그아웃 차단
   StreamSubscription<User?>? _idTokenSubscription;
@@ -83,12 +86,15 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     required SignUpUseCase signUpUseCase,
     required ForgotPasswordUseCase forgotPasswordUseCase,
     required LoginRateLimiter rateLimiter,
+    PushNotificationService? pushNotificationService,
   })  : _ref = ref,
         _dataSource = dataSource,
         _signInUseCase = signInUseCase,
         _signUpUseCase = signUpUseCase,
         _forgotPasswordUseCase = forgotPasswordUseCase,
         _rateLimiter = rateLimiter,
+        _pushNotificationService =
+            pushNotificationService ?? PushNotificationService(),
         super(const AsyncValue.loading()) {
     // 상태가 바뀔 때마다 GoRouter redirect + Crashlytics/Analytics 사용자 식별 동기화
     UserEntity? prev;
@@ -101,18 +107,22 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     _subscribeToFirebaseAuthChanges();
   }
 
-  // 로그인/로그아웃 전이마다 Crashlytics/Analytics user id 동기화
-  // - 로그인 시: setUserIdentifier(uid)
-  // - 로그아웃 시: setUserIdentifier('') / setUserId(null)
+  // 로그인/로그아웃 전이마다 Crashlytics/Analytics user id 동기화 + FCM 토큰 등록/해제
+  // - 로그인 시: setUserIdentifier(uid) + PushNotification init
+  // - 로그아웃 시: setUserIdentifier('') / setUserId(null) + FCM 토큰 삭제
   void _syncObservabilityIdentity(UserEntity? prev, UserEntity? next) {
     if (prev?.id == next?.id) return;
     if (next != null) {
       CrashlyticsHelper.setUserIdentifier(next.id);
       AnalyticsEvents.setUserId(next.id);
+      _pushNotificationService.initForUser(next.id); // 가설 1 — 랭킹 변동 알림
     } else {
       CrashlyticsHelper.setUserIdentifier('');
       AnalyticsEvents.setUserId(null);
       AnalyticsEvents.log(AnalyticsEvents.logout);
+      if (prev != null) {
+        _pushNotificationService.clearForUser(prev.id);
+      }
     }
   }
 
