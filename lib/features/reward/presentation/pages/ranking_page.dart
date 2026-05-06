@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/analytics_events.dart';
+import '../../../../core/services/ranking_next_step.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../running/presentation/providers/running_provider.dart';
@@ -218,6 +219,13 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
         final pageEnd = (pageStart + _kPageSize).clamp(0, entries.length);
         final pageEntries = entries.sublist(pageStart, pageEnd);
 
+        // 가설 1 — 다음 순위까지 gap 계산
+        final nextStep = RankingNextStep.calc(
+          myRank: myRank,
+          myPoints: myPoints,
+          sortedTotalPoints: entries.map((e) => e.totalPoints).toList(),
+        );
+
         return Column(
           children: [
             // ── 내 지역 배너 (상단 고정) ──────────────────────────
@@ -225,6 +233,7 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
               myRegion: myRegion,
               myRank: myRank,
               myPoints: myPoints,
+              nextStep: nextStep,
             ),
 
             // ── 랭킹 목록 ─────────────────────────────────────────
@@ -269,11 +278,13 @@ class _MyRegionBanner extends StatelessWidget {
   final String? myRegion;
   final int myRank;       // -1이면 순위권 밖
   final int myPoints;
+  final RankingNextStepResult? nextStep; // 다음 순위까지 gap (null = 1위/순위권 밖)
 
   const _MyRegionBanner({
     required this.myRegion,
     required this.myRank,
     required this.myPoints,
+    this.nextStep,
   });
 
   @override
@@ -290,12 +301,15 @@ class _MyRegionBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('📍', style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: hasRegion
+          Row(
+            children: [
+              const Text('📍', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: hasRegion
                 ? RichText(
                     text: TextSpan(
                       style: const TextStyle(fontSize: 13),
@@ -346,7 +360,51 @@ class _MyRegionBanner extends StatelessWidget {
                     '프로필에서 지역을 설정하면 내 순위를 볼 수 있어요',
                     style: TextStyle(color: Colors.white38, fontSize: 12),
                   ),
+              ),
+            ],
           ),
+          // 가설 1 — 다음 순위까지 gap 표시 (next step 있을 때만)
+          if (nextStep != null) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.trending_up,
+                    color: _colorPrimary,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 6),
+                  Text.rich(
+                    TextSpan(
+                      style: const TextStyle(fontSize: 12),
+                      children: [
+                        TextSpan(
+                          text: '${nextStep!.gapKm.toStringAsFixed(1)}km',
+                          style: const TextStyle(
+                            color: _colorPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const TextSpan(
+                          text: ' 더 뛰면 ',
+                          style: TextStyle(color: Colors.white60),
+                        ),
+                        TextSpan(
+                          text: '${nextStep!.targetRank}위',
+                          style: const TextStyle(
+                            color: _colorAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
