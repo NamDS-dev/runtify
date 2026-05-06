@@ -8,8 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/config/app_env.dart';
 import 'core/router/app_router.dart';
+import 'core/services/deep_link_handler.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
 import 'firebase_options.dart';
 import 'firebase_options_dev.dart';
 
@@ -70,15 +72,69 @@ Future<void> main() async {
   });
 }
 
-// ConsumerWidget으로 변경하여 themeProvider 감시
-class RuntifyApp extends ConsumerWidget {
+// ConsumerStatefulWidget — DeepLinkHandler 라이프사이클 관리 + themeProvider 감시
+class RuntifyApp extends ConsumerStatefulWidget {
   const RuntifyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RuntifyApp> createState() => _RuntifyAppState();
+}
+
+class _RuntifyAppState extends ConsumerState<RuntifyApp> {
+  DeepLinkHandler? _deepLinkHandler;
+
+  @override
+  void initState() {
+    super.initState();
+    // 콜드/웜 deep link 진입 처리 — 이메일 인증 링크 자동 적용
+    // 웹/Firebase 미초기화 환경에서는 silent 폴백
+    if (!kIsWeb) {
+      try {
+        _deepLinkHandler = DeepLinkHandler(
+          onVerified: () async {
+            await ref.read(authProvider.notifier).reloadEmailVerification();
+            final messenger = _scaffoldMessengerKey.currentState;
+            messenger?.showSnackBar(
+              const SnackBar(
+                content: Text('이메일 인증이 완료되었어요'),
+                backgroundColor: AppTheme.primary,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+          onError: (msg) {
+            final messenger = _scaffoldMessengerKey.currentState;
+            messenger?.showSnackBar(
+              SnackBar(
+                content: Text(msg),
+                backgroundColor: const Color(0xFFFF3333),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+        );
+        _deepLinkHandler?.init();
+      } catch (_) {
+        // Firebase 미초기화 등 — silent
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _deepLinkHandler?.dispose();
+    super.dispose();
+  }
+
+  // SnackBar 를 router 어디서나 표시할 수 있도록 글로벌 key
+  static final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp.router(
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       title: AppEnv.appName, // 개발: 'Runtify (Dev)', 프로덕션: 'Runtify'
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
