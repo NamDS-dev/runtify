@@ -7,7 +7,9 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/providers/gps_signal_provider.dart';
+import '../../../../core/services/analytics_events.dart';
 import '../../../../core/services/running_backup.dart';
 import '../../../../core/services/running_voice_announcer.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -106,6 +108,10 @@ class _RunningPageState extends ConsumerState<RunningPage>
 
   Future<void> _startRun() async {
     setState(() => _gpsError = null);
+
+    // 가설 2 검증 — 직전 결과 화면 이탈 시점부터 다음 시작까지 시간 측정
+    _logTimeToNextRun();
+
     final hasPermission = await _requestLocationPermission();
     if (!hasPermission) return;
 
@@ -357,6 +363,27 @@ class _RunningPageState extends ConsumerState<RunningPage>
         }
       },
     );
+  }
+
+  // 직전 러닝 결과 페이지 이탈 시점부터 다음 러닝 시작까지 시간 측정
+  // — 가설 2 검증(게임화된 캐릭터 성장이 재방문률 높이는가)
+  Future<void> _logTimeToNextRun() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final ms = prefs.getInt('analytics_last_result_at_ms');
+      if (ms == null) return;
+      final delta = DateTime.now().millisecondsSinceEpoch - ms;
+      if (delta < 0) return;
+      final hoursBucket =
+          AnalyticsEvents.bucketDwellSeconds(delta ~/ 1000 ~/ 60, bucketSize: 60);
+      AnalyticsEvents.log(
+        AnalyticsEvents.timeToNextRun,
+        params: {'minutes_bucket': hoursBucket},
+      );
+      await prefs.remove('analytics_last_result_at_ms');
+    } catch (_) {
+      // 분석 데이터 실패는 무시
+    }
   }
 
   // 현재 진행 상태를 백업 스냅샷으로 변환

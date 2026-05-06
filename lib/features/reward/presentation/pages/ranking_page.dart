@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/analytics_events.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../running/presentation/providers/running_provider.dart';
@@ -36,14 +37,28 @@ class _RankingPageState extends ConsumerState<RankingPage>
     (label: '동네', level: 'dong'),
   ];
 
+  // 가설 1 검증 — 랭킹 화면 진입/체류 측정
+  late final DateTime _enteredAt;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _enteredAt = DateTime.now();
+    AnalyticsEvents.log(AnalyticsEvents.rankingTabOpened);
   }
 
   @override
   void dispose() {
+    final dwellSeconds =
+        DateTime.now().difference(_enteredAt).inSeconds;
+    AnalyticsEvents.log(
+      AnalyticsEvents.rankingViewDwell,
+      params: {
+        'dwell_seconds_bucket':
+            AnalyticsEvents.bucketDwellSeconds(dwellSeconds),
+      },
+    );
     _tabController.dispose();
     super.dispose();
   }

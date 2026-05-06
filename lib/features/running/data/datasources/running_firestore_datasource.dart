@@ -297,13 +297,27 @@ class RunningFirestoreDataSource implements RunningDataSource {
     }
 
     // Analytics — 러닝 저장 성공 시점에 발화 (Firebase 호출 실패해도 silent)
-    AnalyticsEvents.log(
-      AnalyticsEvents.runningSaved,
-      params: {
-        'distance_km': session.distanceKm,
-        'duration_seconds': session.durationSeconds,
-      },
-    );
+    // 분포 분석용 파라미터 풍부하게 — 거리/시간/페이스/심박/배지/PB
+    final completedParams = <String, Object>{
+      'distance_km': double.parse(session.distanceKm.toStringAsFixed(2)),
+      'duration_seconds': session.durationSeconds,
+      'avg_pace_min_per_km':
+          double.parse(session.avgPaceMinPerKm.toStringAsFixed(2)),
+      'avg_heart_rate': session.avgHeartRate.round(),
+      'badges_earned': session.newBadgeIds.length,
+      'personal_records': session.newPersonalRecords.length,
+    };
+    AnalyticsEvents.log(AnalyticsEvents.runningSaved, params: completedParams);
+    // running_completed = 가설 검증 Tier 1 이벤트 (running_saved 와 동일 데이터)
+    AnalyticsEvents.log(AnalyticsEvents.runningCompleted, params: completedParams);
+
+    // 배지 획득 이벤트 (가설 2 — 게임화)
+    for (final badgeId in session.newBadgeIds) {
+      AnalyticsEvents.log(
+        AnalyticsEvents.badgeEarned,
+        params: {'badge_id': badgeId},
+      );
+    }
 
     return session;
   }

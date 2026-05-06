@@ -20,6 +20,22 @@ class AnalyticsEvents {
   static const String crewJoined = 'crew_joined';
   static const String crewLeft = 'crew_left';
 
+  // ── 가설 검증 Tier 1 (2026-05-06) ─────────────────────────────────
+  // 가설 1: 지역 기반 랭킹 경쟁이 사용자 호기심을 자극하는가
+  // 가설 2: 게임화된 캐릭터 성장 경험이 재방문률을 높이는가
+  static const String rankingTabOpened = 'ranking_tab_opened';
+  static const String rankingViewDwell = 'ranking_view_dwell';
+  static const String levelUp = 'level_up';
+  static const String timeToNextRun = 'time_to_next_run';
+  static const String badgeEarned = 'badge_earned';
+  static const String runningCompleted = 'running_completed';
+
+  // dwell 시간을 3초 bucket 으로 정규화 (PII 노출 줄이기 + 그룹 분석 친화)
+  static int bucketDwellSeconds(int seconds, {int bucketSize = 3}) {
+    if (seconds < 0) return 0;
+    return (seconds ~/ bucketSize) * bucketSize;
+  }
+
   static FirebaseAnalytics? _instance;
 
   static FirebaseAnalytics? _safeInstance() {

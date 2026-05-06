@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/auth/require_email_verified.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -47,6 +48,21 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showBadgePopupIfNeeded();
     });
+    // 가설 2 검증 — 결과 페이지 진입 시각 기록 (다음 _startRun에서 차이 계산)
+    _recordResultViewedAt();
+  }
+
+  Future<void> _recordResultViewedAt() async {
+    if (widget.session == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        'analytics_last_result_at_ms',
+        DateTime.now().millisecondsSinceEpoch,
+      );
+    } catch (_) {
+      // SharedPreferences 실패는 무시 — 분석 데이터일 뿐
+    }
   }
 
   // 새로 획득한 배지가 있으면 팝업 표시
