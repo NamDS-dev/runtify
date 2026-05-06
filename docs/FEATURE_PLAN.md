@@ -16,71 +16,6 @@
 
 #### 미완료 (야간 큐)
 
-##### ⭐ 가설 검증 Tier 1 (2026-05-06 brainstorming, 출시 전 필수)
-> 두 가설 검증을 위해 추가됨. 상세 배경: [BRAINSTORM_BACKLOG.md](BRAINSTORM_BACKLOG.md)
-> 가설 1: 지역 기반 랭킹 경쟁 호기심 / 가설 2: 게임화된 캐릭터 성장 경험
-
-- [ ] **[관측성] Firebase Analytics 핵심 이벤트 6개 (가설 검증 필수, 2026-05-06)** — 60분
-  - 이벤트 카탈로그 신설/확장 (`core/services/analytics_events.dart`):
-    - `ranking_tab_opened` (가설 1) — 홈 → 랭킹 탭 진입
-    - `ranking_view_dwell` (가설 1) — 랭킹 화면 체류 시간 (3초 단위 bucketing)
-    - `level_up` (가설 2) — 레벨업 발생 시 (level, exp_total)
-    - `time_to_next_run` (가설 2) — 결과 페이지 이탈 → 다음 러닝 시작까지 시간
-    - `badge_earned` (가설 2) — 배지 획득 시 (badge_id)
-    - `running_completed` (기본) — 거리/시간/페이스/심박 평균 (분포 분석용)
-  - 단위 테스트: 이벤트 발화 검증 (mock Analytics)
-  - 파일: `lib/core/services/analytics_events.dart`, 호출부 (랭킹 페이지 / 레벨업 흐름 / 배지 흐름 / running_result_page)
-
-- [ ] **[게임화] 레벨 공식 지수화 + 레벨업 풀스크린 모달 (가설 2, 2026-05-06)** — 90분
-  - 결정: 레벨 공식 `expRequired(N) = (100 * pow(1.5, N - 1)).round()` (지수 곡선)
-    - Lv.1→2: 100, Lv.5→6: 506, Lv.10→11: 3844, Lv.20→21: 221k
-    - 초반 빠르게 → 후반 느리게 (게임 표준)
-  - 레벨업 풀스크린 모달: `LevelUpDialog` 위젯 — 결과 페이지에서 발화
-    - "Lv.X 도달!" + 새 칭호(있으면) + 다음 레벨까지 N EXP
-    - 사운드 옵션 (시스템 사운드만, 추가 자산 X)
-  - 기존 코드 수정: `core/services/level_calculator.dart` 신설 또는 기존 함수 교체
-  - 단위 테스트 (지수 공식, 경계값, 레벨업 트리거)
-  - 파일: `lib/core/services/level_calculator.dart` (신규), `lib/features/running/presentation/widgets/level_up_dialog.dart` (신규), `running_result_page.dart`
-
-- [ ] **[게임화] 레벨별 칭호 6단계 (가설 2, 2026-05-06)** — 60분
-  - 칭호 단계: Lv.1 신입 러너 / Lv.5 동네 러너 / Lv.10 베테랑 러너 / Lv.20 마스터 러너 / Lv.30 챔피언 러너 / Lv.50 전설의 러너
-  - 구현: `core/services/level_title.dart` 순수 함수 — `getTitle(level: int) → String`
-  - 표시 위치: 프로필 페이지 레벨 옆, 결과 페이지 레벨업 모달
-  - 단위 테스트 (각 경계값 + 매핑)
-  - 파일: `lib/core/services/level_title.dart` (신규), `lib/features/auth/presentation/pages/profile_page.dart`, `level_up_dialog.dart`
-
-- [ ] **[게임화] 레이더 차트 — 속도/지구력/꾸준함 3축 (가설 2, 2026-05-06)** — 90분
-  - 3축 계산 (`core/services/runner_stats.dart` 순수 함수):
-    - **속도**: 최근 5회 평균 페이스 → 5'00"/km = 100점, 7'00"/km = 50점 (선형 매핑)
-    - **지구력**: 최근 5회 평균 거리 → 10km = 100점, 3km = 30점
-    - **꾸준함**: 최근 30일 러닝 횟수 / 30 × 100 (max 100점, 매일 = 100)
-  - `fl_chart` `RadarChart` (이미 도입됨)
-  - 표시: 프로필 페이지에 추가 카드
-  - 단위 테스트 (각 축 계산, 빈 데이터/단일 데이터 폴백)
-  - 파일: `lib/core/services/runner_stats.dart` (신규), `lib/features/auth/presentation/widgets/runner_stats_radar.dart` (신규), `profile_page.dart`
-
-- [ ] **[가설1] 랭킹 next-step 표시 (가설 1, 2026-05-06)** — 30분
-  - 랭킹 화면에 "**X km 더 뛰면 N위**" 표시 (이미 데이터로 계산 가능)
-  - 위치: "내 지역" 배너 아래 또는 우측
-  - 계산: 위 사람의 포인트 - 내 포인트 → km로 환산 (포인트 1 = 100m, 또는 거리×10 공식 역산)
-  - 단위 테스트 (경계값: 1위, 꼴찌, 동점)
-  - 파일: `lib/features/reward/presentation/pages/ranking_page.dart`, `lib/core/services/ranking_next_step.dart` (신규)
-
-- [ ] **[가설1] 푸시 알림 1건 — 랭킹 변동 (가설 1, 2026-05-06)** — 90분
-  - 트리거: 매주 월요일 09:00 — 지난 주 랭킹 결과 알림 ("강남구 12위 → 8위! 이번 주도 화이팅 🔥")
-  - 구현: `firebase_messaging` 도입 (없으면 추가) + Cloud Functions은 사용자 영역으로 분리
-  - Flutter 측 야간 가능한 것:
-    - [ ] `pubspec.yaml`에 `firebase_messaging` 추가
-    - [ ] `core/services/push_notification_service.dart` 신설 — 토큰 등록, FCM 메시지 핸들러
-    - [ ] `users/{uid}.fcmToken` 필드 추가 + 자동 갱신
-    - [ ] 알림 권한 요청 (이미 일부 있음, 통합)
-    - [ ] foreground/background 메시지 표시
-    - [ ] 단위 테스트 (서비스 초기화, 토큰 갱신)
-  - **사용자 직접 작업** (출시 전):
-    - [ ] Firebase Cloud Messaging 콘솔 설정
-    - [ ] Cloud Functions로 매주 월요일 09:00 cron — 사용자별 랭킹 변동 계산 후 메시지 발송 (Blaze 요금제 묶음)
-  - 파일: `pubspec.yaml`, `lib/core/services/push_notification_service.dart` (신규), `auth_firebase_datasource.dart`, `main.dart`
-
 ##### 기존 미완료 항목
 
 - [ ] **[러닝v2] 워치 미연결 안내 (2026-04-28 정책 확정)** — 30분
@@ -99,13 +34,6 @@
   - 구현: `RunningProvider`에 임계값 + debounce timer, 위 일시정지 기능과 통합
 
 
-- [ ] **[가입 UX] 이메일 인증 Deep Link → 앱 자동 진입 (2026-04-27 추가)** — 60분 (Flutter 측만)
-  - 현재: 인증 메일 링크 클릭 → Firebase 웹 페이지에서 "verified". 앱 다시 열어 "인증 완료 확인" 버튼 눌러야 반영
-  - 개선: App Links(Android) / Universal Links(iOS) 설정 → 링크 클릭 시 앱 자동 열림 + 자동 reload + 토스트
-  - 구현: `app_links` 패키지로 콜드/웜 진입 처리, `oobCode` 추출 → `applyActionCode` → 자동 reload
-  - ⚠️ 호스팅 단계(`assetlinks.json`, `apple-app-site-association`) + Firebase Auth Action URL 설정은 사용자 직접 작업
-  - 파일: `pubspec.yaml`, `lib/core/services/deep_link_handler.dart` (신규), `lib/main.dart`
-
 - [ ] **[인증] 이메일 인증 — 잔여 가드 적용 (POLICY § 1)**
   - [ ] 러닝 트래킹 페이지 메인 saveSession 가드 (실기기 검증 필요, 야간 보류) — `requireEmailVerified` + 로컬 큐 enqueue
   - [ ] 크루 게시글 작성 가드 — 호출부 페이지 신설 시 적용 (헬퍼 준비 완료)
@@ -119,36 +47,6 @@
   - [ ] 앱 재시작 / 온라인 복귀 시 자동 flush — `connectivity_plus` 새 의존성 결정 필요 (🟡)
   - [ ] 홈 상단 "동기화 대기 N건" 배너 위젯
   - [ ] 이메일 인증 가드와 큐 공유
-
-- [ ] **[네트워크] Firebase 호출 timeout 30초 적용 (2026-05-06 결정)** — 60분
-  - 결정: **모든 Firebase call 30초 timeout** (보수적 — 데이터 유실 방지)
-  - 구현: `lib/core/utils/firebase_timeout.dart` 신설 — `withFirebaseTimeout<T>(Future<T>)` 헬퍼 (TimeoutException 발생 시 명확한 에러 메시지로 변환)
-  - 호출부 적용: `auth_firebase_datasource.dart`, `running_firestore_datasource.dart`, `crew_firestore_datasource.dart`, `goal_firestore_datasource.dart`, `course_firestore_datasource.dart`, `regionStats` 관련 등
-  - 단위 테스트: timeout 시 친절 에러 메시지, 정상 흐름 통과
-  - 파일: `lib/core/utils/firebase_timeout.dart` (신규), 호출부 6개+
-
-- [ ] **[기능] 닉네임 사후 변경 — 30일 1회 제한 (2026-05-06 결정)** — 90분
-  - 결정: **30일 1회 변경 가능** (Strava 정책 참고, 악용/공격 방지 + UX 균형)
-  - 구현 체크리스트:
-    - [ ] `UserEntity`/`UserModel` 에 `nameChangedAt: DateTime?` 필드 추가, Firestore 양방향 직렬화
-    - [ ] `core/services/nickname_change_policy.dart` 신설 — `canChangeNickname(nameChangedAt) → bool`, `daysUntilChangeable(nameChangedAt) → int` (30일 윈도우 계산)
-    - [ ] `auth_firebase_datasource.changeNickname(uid, newName)` 추가 — 기존 `NicknameAvailability` 검증 재사용 + `nameChangedAt = now` 갱신
-    - [ ] `AuthRepository`/`AuthRemoteDataSource`/`AuthNotifier` 체인 노출
-    - [ ] `profile_page.dart`에 닉네임 옆 편집 아이콘 → `ChangeNicknameDialog` (검증 + 30일 미만 시 "X일 후 변경 가능" disabled 안내)
-    - [ ] 단위 테스트 (정책 함수 + UseCase)
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - 파일: `lib/core/services/nickname_change_policy.dart` (신규), `lib/features/auth/presentation/widgets/change_nickname_dialog.dart` (신규), 외 5개
-
-- [ ] **[데이터] wakelock_plus 도입 (2026-05-06 결정)** — 50분
-  - 결정: **wakelock_plus 패키지 도입** (알림 권한 거부 시에도 화면 켜짐 보장 + GPS 정확도 보장)
-  - 구현 체크리스트:
-    - [ ] `pubspec.yaml`에 `wakelock_plus: ^1.x.x` 추가
-    - [ ] `running_page.dart` `_startRun()` 에서 `WakelockPlus.enable()`, `_stopRun()` + dispose에서 `WakelockPlus.disable()`
-    - [ ] try/catch로 미지원 플랫폼(웹)에서 폴백
-    - [ ] Profile에 "러닝 중 화면 켜짐 유지" 토글 추가 (기본 ON, SharedPreferences)
-    - [ ] `flutter analyze --no-pub` + `flutter test` 통과
-  - ⚠️ **실기기 라이프사이클 검증 필수** — 백그라운드 진입/복귀 시 wakelock 상태 확인
-  - 파일: `pubspec.yaml`, `lib/features/running/presentation/pages/running_page.dart`, `lib/features/auth/presentation/pages/profile_page.dart`
 
 - [ ] **[계정] 회원 탈퇴 플로우 — Flutter 측 (2026-05-03 추가, POLICY § 4 기반)** — 180분
   - 분리 원칙: **Flutter 측은 야간 자동, Cloud Functions / 이메일 발송 / 약관 변호사 검토는 사용자 직접** (출시 직전 묶음)
@@ -167,6 +65,16 @@
 
 #### 완료 (한 줄 요약, 상세는 git log)
 
+- [x] **🌙 [가입 UX] 이메일 인증 Deep Link** (2026-05-07) — `app_links` + `DeepLinkHandler` 콜드/웜 진입, `oobCode` `verifyEmail` 모드 검증 → `applyActionCode` → 토스트. `RuntifyApp` ConsumerStatefulWidget + scaffoldMessengerKey. ⚠️ 호스팅(assetlinks/apple-app-site-association) + Firebase Action URL은 사용자 영역
+- [x] **🌙 [데이터] wakelock_plus 도입** (2026-05-07) — `WakelockService` `tryEnable`/`tryDisable` (silent 폴백, 웹 미지원), running_page 라이프사이클 hook, Profile 토글(기본 ON, SharedPreferences). ⚠️ 실기기 라이프사이클 검증 필수
+- [x] **🌙 [기능] 닉네임 사후 변경 — 30일 1회** (2026-05-07) — `NicknameChangePolicy.canChange/daysUntilChangeable`, `UserEntity.nameChangedAt`, `AuthNotifier.changeNickname` (검증→정책→중복→Firestore), `ChangeNicknameDialog` (30일 미만 disabled). 240 tests pass
+- [x] **🌙 [네트워크] Firebase 호출 timeout 30초** (2026-05-07) — `withFirebaseTimeout<T>` 헬퍼 + `FirebaseTimeoutException` 한국어 메시지. read 쿼리 + auth 호출에만 적용 (트랜잭션은 SDK retry 보존). 230 tests pass
+- [x] **🌙 [가설1] 푸시 알림 — Flutter 측** (2026-05-07) — `firebase_messaging` 추가, `PushNotificationService.initForUser/clearForUser` (lazy `_safeMessaging` 테스트 친화), `users.fcmToken/fcmTokenUpdatedAt` 자동 갱신. AuthNotifier 로그인/로그아웃 hook. ⚠️ Cloud Functions cron + APNS는 사용자 영역
+- [x] **🌙 [가설1] 랭킹 next-step 표시** (2026-05-07) — "X km 더 뛰면 N위" 배너. `RankingNextStep.calc(myRank, myPoints, sortedTotalPoints)` 순수 함수 (1위/순위권 밖/동점 → null). 225 tests pass
+- [x] **🌙 [게임화] 레이더 차트 3축** (2026-05-07) — `RunnerStats` 속도/지구력/꾸준함 (5'/100점·10km/100점·30일×100점), `RunnerStatsRadar` fl_chart RadarChart + 점수 라벨 폴백. profile에 카드. 217 tests pass
+- [x] **🌙 [게임화] 레벨별 칭호 6단계** (2026-05-07) — `LevelTitle.forLevel(level)` 신입/동네/베테랑/마스터/챔피언/전설. UserEntity LevelCalculator 전환 + `levelTitle` getter. profile + LevelUpDialog 연결. 200 tests pass
+- [x] **🌙 [게임화] 레벨 공식 지수화 + LevelUpDialog** (2026-05-07) — `LevelCalculator` `expRequired = round(100 * 1.5^(N-1))` (Lv.5→6: 506 / Lv.10→11: 3844). `RunningSessionEntity.levelUpTo` transient + `level_up` Analytics. 그라디언트 풀스크린 모달. 181 tests pass
+- [x] **🌙 [관측성] Analytics 핵심 이벤트 6개** (2026-05-07) — `ranking_tab_opened/ranking_view_dwell/level_up/time_to_next_run/badge_earned/running_completed` + `bucketDwellSeconds(seconds, bucketSize)` 정규화. running_completed 풍부한 파라미터. 158 tests pass
 - [x] **🌙 [입력 검증] 목표 입력 극단값 차단** (2026-05-06) — 야간 PM 발견 갭. `GoalTypeExtension.maxAllowedValue` + `validateInputValue`, `_AddGoalBottomSheet` errorText 즉시 피드백 (주간 200km/월간 800km/주간 21회/streak 365일). 153 tests pass
 - [x] **🌙 [러닝v1] 1km 음성 안내 (TTS)** (2026-05-06) — `flutter_tts` 추가, `RunningVoiceAnnouncer` (한국어, formatAnnouncement 단위 테스트), Profile 토글(기본 ON, SharedPreferences). 147 tests pass
 - [x] **🌙 [러닝v1] 결과 페이지 차트 강화** (2026-05-06) — `RunningSample` 10초 샘플링, `SessionChartCard` (페이스/고도/심박 탭, 페이스 Y축 반전, 0값 무시). result/detail 페이지 통합. 139 tests pass
