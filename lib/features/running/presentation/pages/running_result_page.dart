@@ -14,6 +14,7 @@ import '../../domain/entities/badge_entity.dart';
 import '../../domain/entities/running_session_entity.dart';
 import '../providers/running_provider.dart';
 import '../../../../core/services/level_calculator.dart';
+import '../../../../core/services/level_title.dart';
 import '../widgets/lap_table.dart';
 import '../widgets/level_up_dialog.dart';
 import '../widgets/session_chart_card.dart';
@@ -80,8 +81,7 @@ class _RunningResultPageState extends ConsumerState<RunningResultPage> {
       barrierColor: Colors.black.withValues(alpha: 0.8),
       builder: (_) => LevelUpDialog(
         newLevel: session.levelUpTo!,
-        // 칭호는 다음 task #12 에서 연결 — 현재 null
-        title: null,
+        title: LevelTitle.forLevel(session.levelUpTo!),
         expToNextLevel:
             LevelCalculator.expRequiredForLevelUp(session.levelUpTo!),
       ),

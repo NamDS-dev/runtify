@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+import '../../../../core/services/level_calculator.dart';
+import '../../../../core/services/level_title.dart';
 
 // 앱 내에서 사용하는 순수 유저 데이터 객체
 class UserEntity extends Equatable {
@@ -61,21 +63,23 @@ class UserEntity extends Equatable {
     this.nameNormalized,
   });
 
-  // 다음 레벨까지 필요한 경험치 (레벨 * 100)
-  int get expForNextLevel => level * 100;
+  // 다음 레벨업까지 필요한 경험치 (지수 공식 — 2026-05-06 전환)
+  int get expForNextLevel => LevelCalculator.expRequiredForLevelUp(level);
 
   // 현재 레벨 내 진행도 (0.0 ~ 1.0)
-  double get levelProgress {
-    final currentLevelExp = (level - 1) * 100;
-    final progress = (experience - currentLevelExp) / expForNextLevel;
-    return progress.clamp(0.0, 1.0);
-  }
+  double get levelProgress =>
+      LevelCalculator.progressToNextLevel(experience, level);
 
   // 다음 레벨까지 남은 경험치
   int get expToNextLevel {
-    final currentLevelExp = (level - 1) * 100;
-    return expForNextLevel - (experience - currentLevelExp);
+    final into = LevelCalculator.expIntoCurrentLevel(experience, level);
+    final required = LevelCalculator.expRequiredForLevelUp(level);
+    final remaining = required - into;
+    return remaining < 0 ? 0 : remaining;
   }
+
+  // 레벨별 칭호 (가설 2 — 2026-05-06)
+  String get levelTitle => LevelTitle.forLevel(level);
 
   // 스트릭 보너스 배율 (3일 연속 ×1.2, 7일 연속 ×1.5)
   double get streakMultiplier {
