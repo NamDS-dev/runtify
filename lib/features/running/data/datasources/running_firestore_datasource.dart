@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/services/analytics_events.dart';
 import '../../../../core/services/level_calculator.dart';
 import '../../../../core/services/personal_record_service.dart';
+import '../../../../core/utils/firebase_timeout.dart';
 import '../models/running_session_model.dart';
 import 'badge_firestore_datasource.dart';
 import 'running_mock_datasource.dart';
@@ -29,11 +30,14 @@ class RunningFirestoreDataSource implements RunningDataSource {
   // 최근 러닝 세션 목록 조회 (최신순, 최대 20개)
   @override
   Future<List<RunningSessionModel>> getRecentSessions(String userId) async {
-    final snapshot = await _sessionsRef
-        .where('userId', isEqualTo: userId)
-        .orderBy('startTime', descending: true)
-        .limit(20)
-        .get();
+    final snapshot = await withFirebaseTimeout(
+      _sessionsRef
+          .where('userId', isEqualTo: userId)
+          .orderBy('startTime', descending: true)
+          .limit(20)
+          .get(),
+      operation: 'getRecentSessions',
+    );
 
     return snapshot.docs
         .map((doc) => RunningSessionModel.fromFirestore(doc.data(), doc.id))
@@ -49,12 +53,15 @@ class RunningFirestoreDataSource implements RunningDataSource {
     final startDate = DateTime(year, month, 1).toIso8601String();
     final endDate = DateTime(year, month + 1, 1).toIso8601String();
 
-    final snapshot = await _sessionsRef
-        .where('userId', isEqualTo: userId)
-        .where('startTime', isGreaterThanOrEqualTo: startDate)
-        .where('startTime', isLessThan: endDate)
-        .orderBy('startTime', descending: true)
-        .get();
+    final snapshot = await withFirebaseTimeout(
+      _sessionsRef
+          .where('userId', isEqualTo: userId)
+          .where('startTime', isGreaterThanOrEqualTo: startDate)
+          .where('startTime', isLessThan: endDate)
+          .orderBy('startTime', descending: true)
+          .get(),
+      operation: 'getSessionsByMonth',
+    );
 
     return snapshot.docs
         .map((doc) => RunningSessionModel.fromFirestore(doc.data(), doc.id))

@@ -6,6 +6,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../../core/auth/apple_email.dart';
 import '../../../../core/auth/provider_conflict_message.dart';
 import '../../../../core/services/nickname_availability.dart';
+import '../../../../core/utils/firebase_timeout.dart';
 import '../../../../core/validators/email_validator.dart';
 import '../models/user_model.dart';
 import 'auth_remote_datasource.dart';
@@ -40,9 +41,12 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
     try {
       // 방어적 정규화 — 상위 레이어에서 실수로 trim/lowercase를 놓쳐도 안전
       final normalizedEmail = EmailValidator.normalize(email);
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: normalizedEmail,
-        password: password,
+      final credential = await withFirebaseTimeout(
+        _auth.signInWithEmailAndPassword(
+          email: normalizedEmail,
+          password: password,
+        ),
+        operation: 'signInWithEmail',
       );
 
       final uid = credential.user!.uid;
@@ -64,9 +68,12 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
       final normalizedEmail = EmailValidator.normalize(email);
 
       // Firebase Auth에 계정 생성
-      final credential = await _auth.createUserWithEmailAndPassword(
-        email: normalizedEmail,
-        password: password,
+      final credential = await withFirebaseTimeout(
+        _auth.createUserWithEmailAndPassword(
+          email: normalizedEmail,
+          password: password,
+        ),
+        operation: 'signUpWithEmail',
       );
 
       final uid = credential.user!.uid;

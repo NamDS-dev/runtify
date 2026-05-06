@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/firebase_timeout.dart';
 import '../../data/datasources/health_connect_datasource.dart';
 import '../../data/datasources/running_firestore_datasource.dart';
 import '../../data/datasources/running_mock_datasource.dart';
@@ -109,13 +110,16 @@ class RegionRankEntry {
 final regionRankingProvider = FutureProvider.family<List<RegionRankEntry>,
     ({String level, String month})>(
   (ref, param) async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('regionStats')
-        .where('level', isEqualTo: param.level)
-        .where('month', isEqualTo: param.month)
-        .orderBy('totalPoints', descending: true)
-        .limit(30)
-        .get();
+    final snapshot = await withFirebaseTimeout(
+      FirebaseFirestore.instance
+          .collection('regionStats')
+          .where('level', isEqualTo: param.level)
+          .where('month', isEqualTo: param.month)
+          .orderBy('totalPoints', descending: true)
+          .limit(30)
+          .get(),
+      operation: 'regionRanking_${param.level}',
+    );
 
     return snapshot.docs.map((doc) {
       final d = doc.data();
