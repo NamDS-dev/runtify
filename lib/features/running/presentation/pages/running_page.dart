@@ -12,6 +12,7 @@ import '../../../../core/providers/gps_signal_provider.dart';
 import '../../../../core/services/analytics_events.dart';
 import '../../../../core/services/running_backup.dart';
 import '../../../../core/services/running_voice_announcer.dart';
+import '../../../../core/services/wakelock_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/heart_rate_ble_datasource.dart';
@@ -61,6 +62,9 @@ class _RunningPageState extends ConsumerState<RunningPage>
 
   // 1km 통과 시 음성 안내 (Profile 토글 ON일 때만)
   final RunningVoiceAnnouncer _voiceAnnouncer = RunningVoiceAnnouncer();
+
+  // 러닝 중 화면 켜짐 유지 (Profile 토글 ON일 때만, 2026-05-06)
+  final WakelockService _wakelock = WakelockService();
   double _lastSplitDistanceKm = 0.0; // 마지막 구간 시작 시점 거리
   int _lastSplitSeconds = 0;         // 마지막 구간 시작 시점 시간
 
@@ -176,6 +180,9 @@ class _RunningPageState extends ConsumerState<RunningPage>
     setState(() => _isRunning = true);
 
     _subscribePositionStream(notificationGranted: notificationGranted);
+
+    // 화면 켜짐 유지 — Profile 토글 ON 일 때만 (실패 시 silent)
+    _wakelock.tryEnable();
 
     // 경과 시간 타이머 먼저 등록 — 알림/BLE 권한 요청이 실패/hang해도 타이머는 반드시 동작
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -423,6 +430,8 @@ class _RunningPageState extends ConsumerState<RunningPage>
     _backupTimer = null;
     _sampleTimer?.cancel();
     _sampleTimer = null;
+    // 화면 켜짐 유지 해제
+    _wakelock.tryDisable();
     // 정상 종료 — 백업 키 삭제 (저장 성공/실패와 무관, 러닝은 끝남)
     await _backup.clear();
     await _positionSubscription?.cancel();
@@ -649,6 +658,8 @@ class _RunningPageState extends ConsumerState<RunningPage>
     _hrSub?.cancel();
     _hrStatusSub?.cancel();
     _voiceAnnouncer.dispose();
+    // wakelock 해제 (혹시 _stopRun 못 거치고 dispose 된 경우)
+    _wakelock.tryDisable();
     super.dispose();
   }
 
@@ -1000,6 +1011,7 @@ class _RunningPageState extends ConsumerState<RunningPage>
                 _backupTimer = null;
                 _sampleTimer?.cancel();
                 _sampleTimer = null;
+                _wakelock.tryDisable();
                 // 사용자가 명시적으로 나가는 경우도 백업 삭제
                 await _backup.clear();
                 await _positionSubscription?.cancel();

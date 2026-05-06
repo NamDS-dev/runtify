@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/personal_record_service.dart';
 import '../../../../core/services/running_voice_announcer.dart';
+import '../../../../core/services/wakelock_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../widgets/change_nickname_dialog.dart';
 import '../widgets/runner_stats_radar.dart';
@@ -136,6 +137,10 @@ class ProfilePage extends ConsumerWidget {
 
                 // 1km 음성 안내 토글 (디바이스 고유, SharedPreferences)
                 const _VoiceAnnouncementToggle(),
+                const SizedBox(height: 12),
+
+                // 러닝 중 화면 켜짐 유지 토글 (2026-05-06)
+                const _WakelockToggle(),
                 const SizedBox(height: 20),
 
                 // 로그아웃 버튼
@@ -1051,6 +1056,90 @@ class _VoiceAnnouncementToggleState extends State<_VoiceAnnouncementToggle> {
                 const SizedBox(height: 4),
                 Text(
                   '러닝 중 매 1km 통과 시 페이스/심박 음성 안내',
+                  style: TextStyle(
+                    color: context.colors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!_loaded)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Switch(
+              value: _enabled,
+              onChanged: _toggle,
+              activeThumbColor: AppTheme.primary,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 러닝 중 화면 켜짐 유지 토글 (2026-05-06) ─────────────────────────
+// 디바이스 고유 (SharedPreferences). 알림 권한 거부 시에도 wakelock_plus 로 화면 보장.
+class _WakelockToggle extends StatefulWidget {
+  const _WakelockToggle();
+
+  @override
+  State<_WakelockToggle> createState() => _WakelockToggleState();
+}
+
+class _WakelockToggleState extends State<_WakelockToggle> {
+  bool _enabled = WakelockService.defaultEnabled;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final v = await WakelockService.isEnabled();
+    if (!mounted) return;
+    setState(() {
+      _enabled = v;
+      _loaded = true;
+    });
+  }
+
+  Future<void> _toggle(bool next) async {
+    setState(() => _enabled = next);
+    await WakelockService.setEnabled(next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: context.colors.cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '러닝 중 화면 켜짐 유지',
+                  style: TextStyle(
+                    color: context.colors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'GPS 정확도 보장. 배터리 소모가 늘어날 수 있어요',
                   style: TextStyle(
                     color: context.colors.textSecondary,
                     fontSize: 12,

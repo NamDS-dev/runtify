@@ -81,6 +81,7 @@ dependencies:
   fl_chart: ^1.2.0
   flutter_tts: ^4.2.5
   firebase_messaging: ^15.2.10
+  wakelock_plus: ^1.5.2
 
 dev_dependencies:
   flutter_test:
