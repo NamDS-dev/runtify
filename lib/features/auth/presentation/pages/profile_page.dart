@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/services/personal_record_service.dart';
 import '../../../../core/services/running_voice_announcer.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../widgets/runner_stats_radar.dart';
+import '../../../running/presentation/providers/running_provider.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../domain/entities/user_entity.dart';
@@ -87,6 +89,10 @@ class ProfilePage extends ConsumerWidget {
 
                 // 통계 카드 (포인트 / 총 거리 / 경험치)
                 _StatsRow(user: user),
+                const SizedBox(height: 20),
+
+                // 러너 능력치 레이더 차트 (가설 2 — 2026-05-06)
+                _RunnerStatsCard(userId: user.id),
                 const SizedBox(height: 20),
 
                 // 배지 그리드 (Phase 6)
@@ -945,6 +951,23 @@ class _MarketingConsentToggleState
                 ),
         ],
       ),
+    );
+  }
+}
+
+// ── 러너 능력치 레이더 카드 (가설 2 — 2026-05-06) ─────────────────────
+// 최근 러닝 기록을 watch 해서 속도/지구력/꾸준함 3축으로 시각화.
+class _RunnerStatsCard extends ConsumerWidget {
+  final String userId;
+  const _RunnerStatsCard({required this.userId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final runsAsync = ref.watch(recentRunsProvider(userId));
+    return runsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (sessions) => RunnerStatsRadar(sessions: sessions),
     );
   }
 }
