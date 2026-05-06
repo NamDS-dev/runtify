@@ -16,9 +16,10 @@
 
 1. **GPS 버그 수정 실기기 검증** — 2026-05-03 코드 수정 완료. 갤럭시 워치 + 야외 검증 필요
 2. **🌙 야간 결과물 실기기 검증** (2026-05-06 야간 8개 커밋) — 자동 저장 / 잠금 / 랩 / GPS 배지 / 통계 / 차트 / TTS / 목표 검증
-3. **남은 야간 큐 (10건)** — 워치 미연결, 일시정지/자동 일시정지, Deep Link, 인증 잔여 가드, 회원 탈퇴 + **신규 결정 3건** (timeout 30초 / 닉네임 30일 1회 / wakelock_plus)
-4. **iOS 백그라운드 복귀 크래시 디버깅** — 실기기/TestFlight 필요
-5. **출시 직전 묶음** — Cloud Functions / Blaze / 약관 변호사 / 사업자 정보 / Apple Developer
+3. **⭐ 가설 검증 Tier 1 (6건, 2026-05-06 brainstorming)** — Analytics 이벤트 / 레벨 지수화 + 모달 / 칭호 / 레이더 차트 / 랭킹 next-step / 푸시 알림 ([BRAINSTORM_BACKLOG.md](BRAINSTORM_BACKLOG.md) 참조)
+4. **남은 야간 큐 (기존 10건)** — 워치 미연결, 일시정지/자동 일시정지, Deep Link, 인증 잔여 가드, 회원 탈퇴, timeout 30초, 닉네임 30일 1회, wakelock_plus
+5. **iOS 백그라운드 복귀 크래시 디버깅** — 실기기/TestFlight 필요
+6. **출시 직전 묶음** — Cloud Functions / Blaze / 약관 변호사 / 사업자 정보 / Apple Developer
 
 ---
 

@@ -16,6 +16,73 @@
 
 #### 미완료 (야간 큐)
 
+##### ⭐ 가설 검증 Tier 1 (2026-05-06 brainstorming, 출시 전 필수)
+> 두 가설 검증을 위해 추가됨. 상세 배경: [BRAINSTORM_BACKLOG.md](BRAINSTORM_BACKLOG.md)
+> 가설 1: 지역 기반 랭킹 경쟁 호기심 / 가설 2: 게임화된 캐릭터 성장 경험
+
+- [ ] **[관측성] Firebase Analytics 핵심 이벤트 6개 (가설 검증 필수, 2026-05-06)** — 60분
+  - 이벤트 카탈로그 신설/확장 (`core/services/analytics_events.dart`):
+    - `ranking_tab_opened` (가설 1) — 홈 → 랭킹 탭 진입
+    - `ranking_view_dwell` (가설 1) — 랭킹 화면 체류 시간 (3초 단위 bucketing)
+    - `level_up` (가설 2) — 레벨업 발생 시 (level, exp_total)
+    - `time_to_next_run` (가설 2) — 결과 페이지 이탈 → 다음 러닝 시작까지 시간
+    - `badge_earned` (가설 2) — 배지 획득 시 (badge_id)
+    - `running_completed` (기본) — 거리/시간/페이스/심박 평균 (분포 분석용)
+  - 단위 테스트: 이벤트 발화 검증 (mock Analytics)
+  - 파일: `lib/core/services/analytics_events.dart`, 호출부 (랭킹 페이지 / 레벨업 흐름 / 배지 흐름 / running_result_page)
+
+- [ ] **[게임화] 레벨 공식 지수화 + 레벨업 풀스크린 모달 (가설 2, 2026-05-06)** — 90분
+  - 결정: 레벨 공식 `expRequired(N) = (100 * pow(1.5, N - 1)).round()` (지수 곡선)
+    - Lv.1→2: 100, Lv.5→6: 506, Lv.10→11: 3844, Lv.20→21: 221k
+    - 초반 빠르게 → 후반 느리게 (게임 표준)
+  - 레벨업 풀스크린 모달: `LevelUpDialog` 위젯 — 결과 페이지에서 발화
+    - "Lv.X 도달!" + 새 칭호(있으면) + 다음 레벨까지 N EXP
+    - 사운드 옵션 (시스템 사운드만, 추가 자산 X)
+  - 기존 코드 수정: `core/services/level_calculator.dart` 신설 또는 기존 함수 교체
+  - 단위 테스트 (지수 공식, 경계값, 레벨업 트리거)
+  - 파일: `lib/core/services/level_calculator.dart` (신규), `lib/features/running/presentation/widgets/level_up_dialog.dart` (신규), `running_result_page.dart`
+
+- [ ] **[게임화] 레벨별 칭호 6단계 (가설 2, 2026-05-06)** — 60분
+  - 칭호 단계: Lv.1 신입 러너 / Lv.5 동네 러너 / Lv.10 베테랑 러너 / Lv.20 마스터 러너 / Lv.30 챔피언 러너 / Lv.50 전설의 러너
+  - 구현: `core/services/level_title.dart` 순수 함수 — `getTitle(level: int) → String`
+  - 표시 위치: 프로필 페이지 레벨 옆, 결과 페이지 레벨업 모달
+  - 단위 테스트 (각 경계값 + 매핑)
+  - 파일: `lib/core/services/level_title.dart` (신규), `lib/features/auth/presentation/pages/profile_page.dart`, `level_up_dialog.dart`
+
+- [ ] **[게임화] 레이더 차트 — 속도/지구력/꾸준함 3축 (가설 2, 2026-05-06)** — 90분
+  - 3축 계산 (`core/services/runner_stats.dart` 순수 함수):
+    - **속도**: 최근 5회 평균 페이스 → 5'00"/km = 100점, 7'00"/km = 50점 (선형 매핑)
+    - **지구력**: 최근 5회 평균 거리 → 10km = 100점, 3km = 30점
+    - **꾸준함**: 최근 30일 러닝 횟수 / 30 × 100 (max 100점, 매일 = 100)
+  - `fl_chart` `RadarChart` (이미 도입됨)
+  - 표시: 프로필 페이지에 추가 카드
+  - 단위 테스트 (각 축 계산, 빈 데이터/단일 데이터 폴백)
+  - 파일: `lib/core/services/runner_stats.dart` (신규), `lib/features/auth/presentation/widgets/runner_stats_radar.dart` (신규), `profile_page.dart`
+
+- [ ] **[가설1] 랭킹 next-step 표시 (가설 1, 2026-05-06)** — 30분
+  - 랭킹 화면에 "**X km 더 뛰면 N위**" 표시 (이미 데이터로 계산 가능)
+  - 위치: "내 지역" 배너 아래 또는 우측
+  - 계산: 위 사람의 포인트 - 내 포인트 → km로 환산 (포인트 1 = 100m, 또는 거리×10 공식 역산)
+  - 단위 테스트 (경계값: 1위, 꼴찌, 동점)
+  - 파일: `lib/features/reward/presentation/pages/ranking_page.dart`, `lib/core/services/ranking_next_step.dart` (신규)
+
+- [ ] **[가설1] 푸시 알림 1건 — 랭킹 변동 (가설 1, 2026-05-06)** — 90분
+  - 트리거: 매주 월요일 09:00 — 지난 주 랭킹 결과 알림 ("강남구 12위 → 8위! 이번 주도 화이팅 🔥")
+  - 구현: `firebase_messaging` 도입 (없으면 추가) + Cloud Functions은 사용자 영역으로 분리
+  - Flutter 측 야간 가능한 것:
+    - [ ] `pubspec.yaml`에 `firebase_messaging` 추가
+    - [ ] `core/services/push_notification_service.dart` 신설 — 토큰 등록, FCM 메시지 핸들러
+    - [ ] `users/{uid}.fcmToken` 필드 추가 + 자동 갱신
+    - [ ] 알림 권한 요청 (이미 일부 있음, 통합)
+    - [ ] foreground/background 메시지 표시
+    - [ ] 단위 테스트 (서비스 초기화, 토큰 갱신)
+  - **사용자 직접 작업** (출시 전):
+    - [ ] Firebase Cloud Messaging 콘솔 설정
+    - [ ] Cloud Functions로 매주 월요일 09:00 cron — 사용자별 랭킹 변동 계산 후 메시지 발송 (Blaze 요금제 묶음)
+  - 파일: `pubspec.yaml`, `lib/core/services/push_notification_service.dart` (신규), `auth_firebase_datasource.dart`, `main.dart`
+
+##### 기존 미완료 항목
+
 - [ ] **[러닝v2] 워치 미연결 안내 (2026-04-28 정책 확정)** — 30분
   - 정책: BLE HRM 페어링 기록 있는데 현재 미연결 → 시작 화면 배너. "이 세션만 그냥 시작" 시 해당 세션 dismiss(다음 세션엔 다시 표시). 자동 재연결은 사용자 클릭 시에만
   - 구현: `running_page.dart` 시작 화면 상단 `WatchStatusBanner` 위젯, `flutter_blue_plus` 재연결, 세션 dismiss 플래그(Riverpod, 영속 X)
