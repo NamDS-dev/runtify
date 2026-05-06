@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/services/personal_record_service.dart';
 import '../../../../core/services/running_voice_announcer.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../widgets/change_nickname_dialog.dart';
 import '../widgets/runner_stats_radar.dart';
 import '../../../running/presentation/providers/running_provider.dart';
 import '../../../../core/theme/theme_provider.dart';
@@ -65,13 +66,31 @@ class ProfilePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
-                Text(
-                  user.name,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: context.colors.textPrimary,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      user.name,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: context.colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // 닉네임 사후 변경 (30일 1회 — 2026-05-06)
+                    GestureDetector(
+                      onTap: () => showDialog(
+                        context: context,
+                        builder: (_) => ChangeNicknameDialog(user: user),
+                      ),
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 18,
+                        color: context.colors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(

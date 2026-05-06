@@ -22,6 +22,7 @@ class UserModel extends UserEntity {
     super.marketingConsent,
     super.marketingConsentAt,
     super.nameNormalized,
+    super.nameChangedAt,
   });
 
   // Firestore 문서에서 UserModel 생성
@@ -60,6 +61,7 @@ class UserModel extends UserEntity {
       marketingConsent: data['marketingConsent'] == true,
       marketingConsentAt: _parseDate(data['marketingConsentAt']),
       nameNormalized: data['nameNormalized'] as String?,
+      nameChangedAt: _parseDate(data['nameChangedAt']),
     );
   }
 
@@ -100,6 +102,8 @@ class UserModel extends UserEntity {
       'marketingConsentAt': marketingConsentAt?.toIso8601String(),
       // 닉네임 중복 검사용 정규화 키
       'nameNormalized': nameNormalized,
+      // 마지막 닉네임 변경 시각 (30일 1회 정책)
+      'nameChangedAt': nameChangedAt?.toIso8601String(),
     };
   }
 }

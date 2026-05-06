@@ -127,6 +127,10 @@ class _NoOpDataSource implements AuthRemoteDataSource {
 
   @override
   Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<UserModel> changeNickname(String uid, String newName) =>
+      throw UnimplementedError();
 }
 
 class _NoOpRepository implements AuthRepository {

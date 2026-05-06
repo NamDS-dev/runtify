@@ -282,6 +282,23 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
     }
   }
 
+  // 닉네임 사후 변경 (30일 1회 정책 — NicknameChangePolicy / 2026-05-06)
+  // - 정책 검증/입력 검증/중복 검사는 상위 레이어 책임 — 여기서는 순수 Firestore 갱신만
+  // - users/{uid}.{name, nameNormalized, nameChangedAt} 갱신 후 최신 UserModel 반환
+  @override
+  Future<UserModel> changeNickname(String uid, String newName) async {
+    final now = DateTime.now();
+    await withFirebaseTimeout(
+      _usersRef.doc(uid).update({
+        'name': newName,
+        'nameNormalized': NicknameAvailability.normalizeForKey(newName),
+        'nameChangedAt': now.toIso8601String(),
+      }),
+      operation: 'changeNickname',
+    );
+    return await _getUserFromFirestore(uid);
+  }
+
   // 현재 로그인된 사용자에게 이메일 인증 메일을 재발송
   // 쿨다운은 상위 레이어(AuthNotifier)에서 처리 — 여기서는 순수 호출만 담당
   Future<void> sendCurrentUserEmailVerification() async {

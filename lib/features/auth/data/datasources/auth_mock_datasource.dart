@@ -76,4 +76,38 @@ class AuthMockDataSource implements AuthRemoteDataSource {
     // 데모 모드에서는 실제 발송 없이 no-op
     await Future.delayed(const Duration(milliseconds: 400));
   }
+
+  @override
+  Future<UserModel> changeNickname(String uid, String newName) async {
+    // 데모 모드에서는 메모리 상의 currentUser 만 갱신
+    await Future.delayed(const Duration(milliseconds: 200));
+    final current = _currentUser;
+    if (current == null) {
+      throw Exception('로그인 상태를 확인해주세요');
+    }
+    final updated = UserModel(
+      id: current.id,
+      name: newName,
+      email: current.email,
+      profileImageUrl: current.profileImageUrl,
+      experience: current.experience,
+      points: current.points,
+      level: current.level,
+      totalDistance: current.totalDistance,
+      crewId: current.crewId,
+      streak: current.streak,
+      lastRunDate: current.lastRunDate,
+      homeRegionSi: current.homeRegionSi,
+      homeRegionGu: current.homeRegionGu,
+      homeRegionDong: current.homeRegionDong,
+      emailVerified: current.emailVerified,
+      appleHiddenEmail: current.appleHiddenEmail,
+      marketingConsent: current.marketingConsent,
+      marketingConsentAt: current.marketingConsentAt,
+      nameNormalized: newName.toLowerCase(),
+      nameChangedAt: DateTime.now(),
+    );
+    _currentUser = updated;
+    return updated;
+  }
 }

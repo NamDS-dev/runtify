@@ -41,6 +41,10 @@ class UserEntity extends Equatable {
   // 기존 사용자 문서에는 부재할 수 있어 nullable.
   final String? nameNormalized;
 
+  // 마지막 닉네임 변경 시각 — 30일 1회 정책 (NicknameChangePolicy, 2026-05-06)
+  // null = 한 번도 변경 안 함 (가입 직후 항상 변경 가능)
+  final DateTime? nameChangedAt;
+
   const UserEntity({
     required this.id,
     required this.name,
@@ -61,6 +65,7 @@ class UserEntity extends Equatable {
     this.marketingConsent = false,
     this.marketingConsentAt,
     this.nameNormalized,
+    this.nameChangedAt,
   });
 
   // 다음 레벨업까지 필요한 경험치 (지수 공식 — 2026-05-06 전환)

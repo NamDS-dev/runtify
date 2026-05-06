@@ -12,7 +12,9 @@ import '../../../../core/services/crashlytics_helper.dart';
 import '../../../../core/services/email_verification_rate_limiter.dart';
 import '../../../../core/services/login_rate_limiter.dart';
 import '../../../../core/services/nickname_availability.dart';
+import '../../../../core/services/nickname_change_policy.dart';
 import '../../../../core/services/push_notification_service.dart';
+import '../../../../core/validators/name_validator.dart';
 import '../../../running/presentation/providers/running_in_progress_provider.dart';
 import '../../data/datasources/auth_firebase_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -290,6 +292,50 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
   Future<void> signOut() async {
     await _dataSource.signOut();
     state = const AsyncValue.data(null);
+  }
+
+  // 닉네임 사후 변경 (30일 1회 정책 — NicknameChangePolicy / 2026-05-06)
+  // 반환: null = 성공, String = 사용자 노출 에러 메시지
+  Future<String?> changeNickname(String newName) async {
+    final user = state.valueOrNull;
+    if (user == null) return '로그인 상태를 확인해주세요';
+
+    // 입력 검증
+    final nameError = NameValidator.validate(newName);
+    if (nameError != null) return nameError;
+
+    // 30일 정책 검증
+    if (!NicknameChangePolicy.canChange(lastChangedAt: user.nameChangedAt)) {
+      final remaining = NicknameChangePolicy.daysUntilChangeable(
+          lastChangedAt: user.nameChangedAt);
+      return '닉네임은 $remaining일 후에 변경할 수 있어요';
+    }
+
+    // 동일 닉네임이면 변경 안 함 (사용자 noop)
+    if (NameValidator.normalize(newName) == NameValidator.normalize(user.name)) {
+      return null;
+    }
+
+    // 중복 검사 — 본인 제외
+    final availability =
+        await _ref.read(nicknameAvailabilityProvider).check(newName, currentUserId: user.id);
+    switch (availability) {
+      case NicknameAvailabilityResult.taken:
+        return '이미 사용 중인 닉네임이에요';
+      case NicknameAvailabilityResult.error:
+        return '확인에 실패했어요. 잠시 후 다시 시도해주세요';
+      case NicknameAvailabilityResult.available:
+        break;
+    }
+
+    // 실제 변경
+    try {
+      await _dataSource.changeNickname(user.id, newName);
+      await refreshUser();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
   }
 
   // 비밀번호 재설정 메일 발송

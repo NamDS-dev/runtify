@@ -18,6 +18,12 @@ abstract class AuthRemoteDataSource {
   // 보안: 등록된 이메일 여부와 무관하게 상위 레이어에서 동일 메시지를 표시한다.
   // (FirebaseAuthException user-not-found 를 던져도 상위에서 성공 응답과 동일하게 취급)
   Future<void> sendPasswordResetEmail(String email);
+
+  // 닉네임 사후 변경 (30일 1회, 2026-05-06 정책)
+  // - 호출 전 [NicknameChangePolicy.canChange] 와 `NameValidator` / `NicknameAvailability` 검증 통과 필요
+  // - 성공 시 users/{uid}.{name, nameNormalized, nameChangedAt} 갱신
+  // - 갱신 후 최신 [UserModel] 반환
+  Future<UserModel> changeNickname(String uid, String newName);
 }
 
 // Firebase 실제 구현체는 Firebase 연동 시 별도 파일로 구현
