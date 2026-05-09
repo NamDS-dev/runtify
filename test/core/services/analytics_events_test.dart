@@ -15,6 +15,9 @@ void main() {
         AnalyticsEvents.timeToNextRun,
         AnalyticsEvents.badgeEarned,
         AnalyticsEvents.runningCompleted,
+        AnalyticsEvents.accountDeletionRequested,
+        AnalyticsEvents.accountDeletionConfirmed,
+        AnalyticsEvents.accountRecovered,
       ];
       final regex = RegExp(r'^[a-z][a-z_]*[a-z]$');
       for (final n in names) {
@@ -40,9 +43,12 @@ void main() {
         AnalyticsEvents.timeToNextRun,
         AnalyticsEvents.badgeEarned,
         AnalyticsEvents.runningCompleted,
+        AnalyticsEvents.accountDeletionRequested,
+        AnalyticsEvents.accountDeletionConfirmed,
+        AnalyticsEvents.accountRecovered,
       };
       // Set 으로 변환 후 길이 비교 — 중복 있으면 set 길이가 작아짐
-      expect(names.length, 15);
+      expect(names.length, 18);
     });
   });
 

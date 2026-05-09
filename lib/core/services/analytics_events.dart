@@ -30,6 +30,12 @@ class AnalyticsEvents {
   static const String badgeEarned = 'badge_earned';
   static const String runningCompleted = 'running_completed';
 
+  // ── 회원 탈퇴 (POLICY § 4 / 2026-05-09) ──────────────────────────
+  // 이탈률 + 복구율 분석 — Cloud Functions hard delete 전 30일 동안 추적
+  static const String accountDeletionRequested = 'account_deletion_requested';
+  static const String accountDeletionConfirmed = 'account_deletion_confirmed';
+  static const String accountRecovered = 'account_recovered';
+
   // dwell 시간을 3초 bucket 으로 정규화 (PII 노출 줄이기 + 그룹 분석 친화)
   static int bucketDwellSeconds(int seconds, {int bucketSize = 3}) {
     if (seconds < 0) return 0;

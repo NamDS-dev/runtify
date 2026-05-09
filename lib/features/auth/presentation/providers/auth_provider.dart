@@ -357,6 +357,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     if (user == null) return '로그인 상태를 확인해주세요';
     try {
       await _dataSource.requestDeletionCode(user.id);
+      AnalyticsEvents.log(AnalyticsEvents.accountDeletionRequested);
       return null;
     } catch (e) {
       return e.toString().replaceFirst('Exception: ', '');
@@ -370,6 +371,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     if (user == null) return '로그인 상태를 확인해주세요';
     try {
       await _dataSource.confirmDeletion(uid: user.id, code: code);
+      AnalyticsEvents.log(AnalyticsEvents.accountDeletionConfirmed);
       // 소프트 삭제 완료 → 자동 로그아웃
       await _dataSource.signOut();
       state = const AsyncValue.data(null);
@@ -385,6 +387,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     if (user == null) return '로그인 상태를 확인해주세요';
     try {
       await _dataSource.recoverAccount(user.id);
+      AnalyticsEvents.log(AnalyticsEvents.accountRecovered);
       await refreshUser();
       return null;
     } catch (e) {
