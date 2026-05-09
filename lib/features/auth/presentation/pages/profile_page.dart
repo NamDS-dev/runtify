@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/personal_record_service.dart';
+import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/services/running_voice_announcer.dart';
 import '../../../../core/services/wakelock_service.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -142,6 +143,10 @@ class ProfilePage extends ConsumerWidget {
 
                 // 러닝 중 화면 켜짐 유지 토글 (2026-05-06)
                 const _WakelockToggle(),
+                const SizedBox(height: 12),
+
+                // 푸시 알림 옵트아웃 (2026-05-09 신규)
+                _PushNotificationToggle(userId: user.id),
                 const SizedBox(height: 20),
 
                 // 로그아웃 버튼
@@ -1076,6 +1081,102 @@ class _VoiceAnnouncementToggleState extends State<_VoiceAnnouncementToggle> {
                 const SizedBox(height: 4),
                 Text(
                   '러닝 중 매 1km 통과 시 페이스/심박 음성 안내',
+                  style: TextStyle(
+                    color: context.colors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!_loaded)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Switch(
+              value: _enabled,
+              onChanged: _toggle,
+              activeThumbColor: AppTheme.primary,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 푸시 알림 옵트아웃 토글 (2026-05-09) ────────────────────────────
+// 디바이스 고유 (SharedPreferences). OFF 시 FCM 토큰 정리 + 재등록 차단.
+// ON 으로 다시 켜면 다음 로그인 시 또는 즉시 재등록.
+class _PushNotificationToggle extends ConsumerStatefulWidget {
+  final String userId;
+  const _PushNotificationToggle({required this.userId});
+
+  @override
+  ConsumerState<_PushNotificationToggle> createState() =>
+      _PushNotificationToggleState();
+}
+
+class _PushNotificationToggleState
+    extends ConsumerState<_PushNotificationToggle> {
+  bool _enabled = PushNotificationService.defaultEnabled;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final v = await PushNotificationService.isOptedIn();
+    if (!mounted) return;
+    setState(() {
+      _enabled = v;
+      _loaded = true;
+    });
+  }
+
+  Future<void> _toggle(bool next) async {
+    setState(() => _enabled = next);
+    await PushNotificationService.setOptedIn(next);
+    final service = PushNotificationService();
+    if (next) {
+      // 즉시 재등록 — 다음 로그인 기다리지 않음
+      await service.initForUser(widget.userId);
+    } else {
+      // 토큰 정리 — Cloud Functions 발송 안 됨
+      await service.clearForUser(widget.userId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: context.colors.cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '푸시 알림',
+                  style: TextStyle(
+                    color: context.colors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '랭킹 변동·이벤트 알림을 받습니다',
                   style: TextStyle(
                     color: context.colors.textSecondary,
                     fontSize: 12,

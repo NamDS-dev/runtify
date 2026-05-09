@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// FCM(푸시 알림) 서비스 — 가설 1 검증 (랭킹 변동 알림, 2026-05-06).
 ///
@@ -41,12 +42,36 @@ class PushNotificationService {
     }
   }
 
+  // ── 사용자 옵트아웃 (Profile 토글, 2026-05-09) ────────────────────
+  static const String prefKey = 'push_notifications_enabled';
+  static const bool defaultEnabled = true;
+
+  static Future<bool> isOptedIn() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(prefKey) ?? defaultEnabled;
+    } catch (_) {
+      return defaultEnabled;
+    }
+  }
+
+  static Future<void> setOptedIn(bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(prefKey, value);
+    } catch (_) {
+      // 무시
+    }
+  }
+
   /// 로그인 후 호출 — 토큰 등록 + 메시지 핸들러 연결.
   ///
   /// 권한 요청은 ON으로 진행하되 사용자 거부해도 silent — 알림 없이 계속.
   /// Firebase 미초기화/토큰 발급 실패는 모두 silent (앱 흐름 차단 X).
+  /// 사용자가 옵트아웃 했으면 토큰 등록 자체를 스킵.
   Future<void> initForUser(String uid) async {
     if (uid.isEmpty) return;
+    if (!await isOptedIn()) return; // 사용자가 푸시 알림 끔 → 토큰 등록 안 함
     final messaging = _safeMessaging;
     if (messaging == null) return; // Firebase 미초기화 (테스트/데모) — silent
     try {
