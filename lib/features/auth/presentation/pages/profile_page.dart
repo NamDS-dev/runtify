@@ -6,6 +6,7 @@ import '../../../../core/services/personal_record_service.dart';
 import '../../../../core/services/running_voice_announcer.dart';
 import '../../../../core/services/wakelock_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../widgets/account_deletion_dialog.dart';
 import '../widgets/change_nickname_dialog.dart';
 import '../widgets/runner_stats_radar.dart';
 import '../../../running/presentation/providers/running_provider.dart';
@@ -159,6 +160,25 @@ class ProfilePage extends ConsumerWidget {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       side: const BorderSide(color: Colors.red),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 계정 삭제 (POLICY § 4 — 2026-05-09)
+                Center(
+                  child: TextButton(
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => const AccountDeletionDialog(),
+                    ),
+                    child: Text(
+                      '계정 삭제',
+                      style: TextStyle(
+                        color: context.colors.textSecondary,
+                        fontSize: 12,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
                 ),
