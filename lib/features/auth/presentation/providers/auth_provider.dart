@@ -338,6 +338,60 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     }
   }
 
+  // ── 회원 탈퇴 (POLICY § 4) ─────────────────────────────────────────
+  // canRequestDeletion: 크루 리더 + 멤버 1명+ 시 false → UI 에서 양도 안내
+  Future<bool> canRequestAccountDeletion() async {
+    final user = state.valueOrNull;
+    if (user == null) return false;
+    try {
+      return await _dataSource.canRequestDeletion(user.id);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // 6자리 코드 발송 (Flutter placeholder — 디버그 모드에서만 콘솔 출력)
+  // 반환: null = 발송됨, String = 에러 메시지
+  Future<String?> requestAccountDeletionCode() async {
+    final user = state.valueOrNull;
+    if (user == null) return '로그인 상태를 확인해주세요';
+    try {
+      await _dataSource.requestDeletionCode(user.id);
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  // 코드 검증 + 소프트 삭제 + 자동 로그아웃
+  // 반환: null = 성공 (사용자는 로그아웃됨), String = 에러 메시지
+  Future<String?> confirmAccountDeletion(String code) async {
+    final user = state.valueOrNull;
+    if (user == null) return '로그인 상태를 확인해주세요';
+    try {
+      await _dataSource.confirmDeletion(uid: user.id, code: code);
+      // 소프트 삭제 완료 → 자동 로그아웃
+      await _dataSource.signOut();
+      state = const AsyncValue.data(null);
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  // 30일 내 재로그인 후 사용자 동의로 호출 — deletedAt/scheduledHardDeleteAt = null
+  Future<String?> recoverAccount() async {
+    final user = state.valueOrNull;
+    if (user == null) return '로그인 상태를 확인해주세요';
+    try {
+      await _dataSource.recoverAccount(user.id);
+      await refreshUser();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
   // 비밀번호 재설정 메일 발송
   // 반환: null = 성공(또는 계정 존재 힌트 차단용 의사-성공), String = 입력/네트워크 에러 메시지
   Future<String?> sendPasswordReset(String email) async {

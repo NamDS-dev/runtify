@@ -131,6 +131,19 @@ class _NoOpDataSource implements AuthRemoteDataSource {
   @override
   Future<UserModel> changeNickname(String uid, String newName) =>
       throw UnimplementedError();
+
+  @override
+  Future<bool> canRequestDeletion(String uid) async => true;
+
+  @override
+  Future<String> requestDeletionCode(String uid) => throw UnimplementedError();
+
+  @override
+  Future<void> confirmDeletion({required String uid, required String code}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> recoverAccount(String uid) => throw UnimplementedError();
 }
 
 class _NoOpRepository implements AuthRepository {

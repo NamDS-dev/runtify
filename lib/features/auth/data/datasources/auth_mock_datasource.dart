@@ -78,6 +78,28 @@ class AuthMockDataSource implements AuthRemoteDataSource {
   }
 
   @override
+  Future<bool> canRequestDeletion(String uid) async => true;
+
+  @override
+  Future<String> requestDeletionCode(String uid) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return '000000';
+  }
+
+  @override
+  Future<void> confirmDeletion({
+    required String uid,
+    required String code,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+  }
+
+  @override
+  Future<void> recoverAccount(String uid) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+  }
+
+  @override
   Future<UserModel> changeNickname(String uid, String newName) async {
     // 데모 모드에서는 메모리 상의 currentUser 만 갱신
     await Future.delayed(const Duration(milliseconds: 200));

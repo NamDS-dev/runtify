@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../../core/auth/apple_email.dart';
 import '../../../../core/auth/provider_conflict_message.dart';
+import '../../../../core/services/account_deletion_service.dart';
 import '../../../../core/services/nickname_availability.dart';
 import '../../../../core/utils/firebase_timeout.dart';
 import '../../../../core/validators/email_validator.dart';
@@ -25,12 +26,17 @@ const List<String> _userScopedPrefsKeys = [
 class AuthFirebaseDataSource implements AuthRemoteDataSource {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
+  // 회원 탈퇴 6자리 코드 발송/검증 (POLICY § 4)
+  final AccountDeletionService _deletionService;
 
   AuthFirebaseDataSource({
     required FirebaseAuth auth,
     required FirebaseFirestore firestore,
+    AccountDeletionService? deletionService,
   })  : _auth = auth,
-        _firestore = firestore;
+        _firestore = firestore,
+        _deletionService = deletionService ??
+            AccountDeletionService(firestore: firestore);
 
   // Firestore users 컬렉션 참조
   CollectionReference<Map<String, dynamic>> get _usersRef =>
@@ -297,6 +303,81 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
       operation: 'changeNickname',
     );
     return await _getUserFromFirestore(uid);
+  }
+
+  // ── 회원 탈퇴 (POLICY § 4) ──────────────────────────────────────────────
+  @override
+  Future<bool> canRequestDeletion(String uid) async {
+    final userSnap = await withFirebaseTimeout(
+      _usersRef.doc(uid).get(),
+      operation: 'canRequestDeletion.user',
+    );
+    final data = userSnap.data();
+    if (data == null) return true; // 이미 삭제됨
+
+    final crewId = data['crewId'] as String?;
+    if (crewId == null || crewId.isEmpty) return true; // 크루 미가입
+
+    final crewSnap = await withFirebaseTimeout(
+      _firestore.collection('crews').doc(crewId).get(),
+      operation: 'canRequestDeletion.crew',
+    );
+    final crewData = crewSnap.data();
+    if (crewData == null) return true; // 크루 문서 없음
+
+    final leaderId = crewData['leaderId'] as String?;
+    if (leaderId != uid) return true; // 본인 리더 아님
+
+    // 본인 리더 — 멤버 1명+ 시 거부 (양도 후 탈퇴), 본인만이면 허용 (탈퇴 시 크루 자동 해체)
+    final memberIds = (crewData['memberIds'] as List?)?.cast<String>() ?? [];
+    final otherMembers = memberIds.where((id) => id != uid).toList();
+    return otherMembers.isEmpty;
+  }
+
+  @override
+  Future<String> requestDeletionCode(String uid) async {
+    return _deletionService.issueCode(uid: uid);
+  }
+
+  @override
+  Future<void> confirmDeletion({
+    required String uid,
+    required String code,
+  }) async {
+    final result = await _deletionService.verifyCode(uid: uid, code: code);
+    switch (result) {
+      case DeletionCodeResult.valid:
+        break;
+      case DeletionCodeResult.invalid:
+        throw Exception('인증 코드가 올바르지 않아요');
+      case DeletionCodeResult.expired:
+        throw Exception('인증 코드가 만료되었어요. 다시 요청해주세요');
+      case DeletionCodeResult.notIssued:
+        throw Exception('인증 코드를 먼저 요청해주세요');
+    }
+
+    final now = DateTime.now();
+    final scheduledHardDeleteAt = now.add(const Duration(days: 30));
+    await withFirebaseTimeout(
+      _usersRef.doc(uid).update({
+        'deletedAt': now.toIso8601String(),
+        'scheduledHardDeleteAt': scheduledHardDeleteAt.toIso8601String(),
+      }),
+      operation: 'confirmDeletion',
+    );
+    // 코드 재사용 차단
+    await _deletionService.clearCode(uid);
+  }
+
+  @override
+  Future<void> recoverAccount(String uid) async {
+    await withFirebaseTimeout(
+      _usersRef.doc(uid).update({
+        'deletedAt': FieldValue.delete(),
+        'scheduledHardDeleteAt': FieldValue.delete(),
+      }),
+      operation: 'recoverAccount',
+    );
   }
 
   // 현재 로그인된 사용자에게 이메일 인증 메일을 재발송
