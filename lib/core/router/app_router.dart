@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'auth_router_state.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/onboarding_home_region_page.dart';
+import '../../features/auth/presentation/pages/recover_account_page.dart';
 import '../../features/auth/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/pages/social_login_page.dart';
 import '../../features/crew/presentation/pages/crew_challenge_page.dart';
@@ -55,9 +56,18 @@ final appRouter = GoRouter(
     if (user == null) return null; // 비로그인은 기존 플로우 유지
 
     final loc = state.matchedLocation;
+
+    // 회원 탈퇴 30일 유예 중 → 강제 복구 페이지로 이동 (POLICY § 4)
+    // /login 만 예외 — 사용자가 "로그아웃" 선택할 수 있어야 함
+    if (user.isPendingDeletion) {
+      if (loc.startsWith('/login') || loc == '/recover-account') return null;
+      return '/recover-account';
+    }
+
     if (loc.startsWith('/login') ||
         loc.startsWith('/legal') ||
-        loc.startsWith('/onboarding')) {
+        loc.startsWith('/onboarding') ||
+        loc == '/recover-account') {
       return null;
     }
 
@@ -234,6 +244,15 @@ final appRouter = GoRouter(
       pageBuilder: (context, state) => _platformPage(
         key: state.pageKey,
         child: const OnboardingHomeRegionPage(),
+      ),
+    ),
+
+    // ── 회원 탈퇴 30일 유예 중 — 복구/로그아웃 선택 (POLICY § 4) ─────
+    GoRoute(
+      path: '/recover-account',
+      pageBuilder: (context, state) => _platformPage(
+        key: state.pageKey,
+        child: const RecoverAccountPage(),
       ),
     ),
 
