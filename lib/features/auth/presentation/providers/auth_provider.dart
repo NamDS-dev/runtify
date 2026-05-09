@@ -10,6 +10,7 @@ import '../../../../core/router/auth_router_state.dart';
 import '../../../../core/services/analytics_events.dart';
 import '../../../../core/services/crashlytics_helper.dart';
 import '../../../../core/services/email_verification_rate_limiter.dart';
+import '../../../../core/services/account_deletion_rate_limiter.dart';
 import '../../../../core/services/login_rate_limiter.dart';
 import '../../../../core/services/nickname_availability.dart';
 import '../../../../core/services/nickname_change_policy.dart';
@@ -77,6 +78,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
   final Ref _ref;
   // FCM 토큰 등록·해제 (가설 1 검증, 2026-05-06)
   final PushNotificationService _pushNotificationService;
+  // 회원 탈퇴 코드 발송 레이트 리밋 (POLICY § 4 / 2026-05-09)
+  final AccountDeletionRateLimiter _deletionRateLimiter;
 
   // Firebase Auth 토큰/세션 변화 구독 — 러닝 중 강제 로그아웃 차단
   StreamSubscription<User?>? _idTokenSubscription;
@@ -89,6 +92,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     required ForgotPasswordUseCase forgotPasswordUseCase,
     required LoginRateLimiter rateLimiter,
     PushNotificationService? pushNotificationService,
+    AccountDeletionRateLimiter? deletionRateLimiter,
   })  : _ref = ref,
         _dataSource = dataSource,
         _signInUseCase = signInUseCase,
@@ -97,6 +101,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
         _rateLimiter = rateLimiter,
         _pushNotificationService =
             pushNotificationService ?? PushNotificationService(),
+        _deletionRateLimiter =
+            deletionRateLimiter ?? AccountDeletionRateLimiter(),
         super(const AsyncValue.loading()) {
     // 상태가 바뀔 때마다 GoRouter redirect + Crashlytics/Analytics 사용자 식별 동기화
     UserEntity? prev;
@@ -352,11 +358,23 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
 
   // 6자리 코드 발송 (Flutter placeholder — 디버그 모드에서만 콘솔 출력)
   // 반환: null = 발송됨, String = 에러 메시지
+  // 5분/3회 슬라이딩 윈도우 레이트 리밋 (POLICY § 4)
   Future<String?> requestAccountDeletionCode() async {
     final user = state.valueOrNull;
     if (user == null) return '로그인 상태를 확인해주세요';
+
+    // 레이트 리밋 사전 체크
+    final cooldown = await _deletionRateLimiter.remaining(user.id);
+    if (cooldown != null) {
+      final m = cooldown.inMinutes;
+      final s = cooldown.inSeconds % 60;
+      final timeText = m > 0 ? '$m분 $s초' : '$s초';
+      return '잠시 후에 다시 시도해주세요. ($timeText 후 재발송 가능)';
+    }
+
     try {
       await _dataSource.requestDeletionCode(user.id);
+      await _deletionRateLimiter.markSent(user.id);
       AnalyticsEvents.log(AnalyticsEvents.accountDeletionRequested);
       return null;
     } catch (e) {
