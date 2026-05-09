@@ -83,6 +83,9 @@ class CrewFirestoreDataSource {
 
       for (final doc in snapshot.docs) {
         final data = doc.data();
+        // 탈퇴(소프트 삭제) 사용자 제외 — POLICY § 4 / 2026-05-09
+        // Cloud Functions hard delete 전 30일 유예 동안 다른 멤버에게 보이지 않게
+        if (data['deletedAt'] != null) continue;
         members.add(CrewMemberInfo(
           id: doc.id,
           name: data['name'] as String? ?? '알 수 없음',

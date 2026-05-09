@@ -45,6 +45,13 @@ class UserEntity extends Equatable {
   // null = 한 번도 변경 안 함 (가입 직후 항상 변경 가능)
   final DateTime? nameChangedAt;
 
+  // 회원 탈퇴 (소프트 삭제) — POLICY § 4 / 2026-05-09
+  // deletedAt: 탈퇴 요청 확정 시각. null 이면 정상 활성 사용자
+  // scheduledHardDeleteAt: deletedAt + 30일. Cloud Functions cron 이 이 시점 이후 hard delete
+  // 30일 내 재로그인 시 복구 화면으로 분기 가능 — 두 필드를 다시 null 로 set
+  final DateTime? deletedAt;
+  final DateTime? scheduledHardDeleteAt;
+
   const UserEntity({
     required this.id,
     required this.name,
@@ -66,7 +73,12 @@ class UserEntity extends Equatable {
     this.marketingConsentAt,
     this.nameNormalized,
     this.nameChangedAt,
+    this.deletedAt,
+    this.scheduledHardDeleteAt,
   });
+
+  // 소프트 삭제 상태 여부 — 30일 유예 기간 중인지 확인
+  bool get isPendingDeletion => deletedAt != null;
 
   // 다음 레벨업까지 필요한 경험치 (지수 공식 — 2026-05-06 전환)
   int get expForNextLevel => LevelCalculator.expRequiredForLevelUp(level);

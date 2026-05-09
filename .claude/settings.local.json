@@ -222,7 +222,22 @@
       "Bash(rm -f /tmp/inject_gps_route.sh /tmp/screen*.png)",
       "Skill(schedule)",
       "Skill(schedule:*)",
-      "mcp__claude_ai_Notion__notion-update-page"
+      "mcp__claude_ai_Notion__notion-update-page",
+      "Bash(firebase --version)",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('./index.js'\\)\")",
+      "Bash(node -e \"require\\('./index.js'\\); console.log\\('syntax OK'\\)\")",
+      "Bash(keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android)",
+      "Bash(keytool -list -v -keystore ~/.android/debug.keystore)",
+      "Bash(keytool -list -v -keystore ~/.android/debug.keystore -storepass android)",
+      "Bash(keytool -exportcert -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey)",
+      "Bash(openssl sha256 *)",
+      "Bash(awk '{print $2}')",
+      "Bash(curl -s -o /dev/null -w \"assetlinks: %{http_code} %{content_type}\\\\n\" https://runtify-dev.web.app/.well-known/assetlinks.json)",
+      "Bash(curl -s -o /dev/null -w \"apple-app-site-association: %{http_code} %{content_type}\\\\n\" https://runtify-dev.web.app/.well-known/apple-app-site-association)",
+      "Bash(curl -s https://runtify-dev.web.app/.well-known/assetlinks.json)",
+      "Bash(gcloud --version)",
+      "Bash(firebase functions:list --project=runtify-dev)"
     ],
     "defaultMode": "bypassPermissions"
   }
