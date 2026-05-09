@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.runtify.runtify",
+      "sha256_cert_fingerprints": [
+        "80:91:BE:C8:2E:83:E1:88:07:78:DD:F1:98:29:32:6A:68:2B:DB:5B:67:65:8B:00:B1:10:4A:DF:85:DF:C2:43"
+      ]
+    }
+  }
+]

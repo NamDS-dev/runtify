@@ -18,5 +18,13 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "users",
+      "fieldPath": "nameNormalized",
+      "indexes": [
+        { "queryScope": "COLLECTION", "order": "ASCENDING" }
+      ]
+    }
+  ]
 }

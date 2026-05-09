@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.com.runtify.runtify",
+        "paths": [
+          "/__/auth/action*",
+          "/link*"
+        ]
+      }
+    ]
+  }
+}
