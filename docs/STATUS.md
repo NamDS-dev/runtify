@@ -1,6 +1,6 @@
 # Runtify 프로젝트 현황
 
-> 최종 업데이트: 2026-05-07
+> 최종 업데이트: 2026-05-09
 > PM 에이전트가 이 파일을 읽고 다음 작업을 결정합니다.
 > 미완료 상세 항목은 [FEATURE_PLAN.md](FEATURE_PLAN.md) 🟢 자동 구현 대상 섹션 참조.
 
@@ -14,10 +14,10 @@
 
 ## 다음 권장 작업 (우선순위 순)
 
-1. **🌙 야간 결과물 18건 실기기 검증** (2026-05-06+07 야간 18개 커밋) — 1차: 자동 저장/잠금/랩/GPS 배지/통계/차트/TTS/목표 / 2차: Analytics 6개/레벨 지수/칭호/레이더 차트/랭킹 next-step/FCM/timeout/닉네임 변경/wakelock/Deep Link
-2. **사용자 직접 작업** (출시 전) — Cloud Functions(FCM cron, 회원 탈퇴) / Firebase Console(FCM, Auth Action URL) / 호스팅(assetlinks, apple-app-site-association) / native config / Blaze 요금제
+1. **🌙 야간 결과물 27건 실기기 검증** (3차 야간 누적) — 신규 9건: 회원 탈퇴 5단계 + 탈퇴 Analytics + 푸시 옵트아웃 토글 + 탈퇴 코드 레이트 리밋(5분/3회) + 5회 시도 제한
+2. **사용자 직접 작업** (출시 전) — Cloud Functions(FCM cron / 탈퇴 hard delete cron / sendDeletionCodeEmail) / Firebase Console / 호스팅 / native config / Blaze 요금제 / 약관 변호사 검토
 3. **GPS 버그 수정 실기기 검증** — 2026-05-03 코드 수정 완료. 갤럭시 워치 + 야외 검증 필요
-4. **남은 야간 큐 (BLE/라이프사이클 영역 보류 4건)** — 워치 미연결, 일시정지, 자동 일시정지, 회원 탈퇴(180분), 인증 잔여 가드
+4. **남은 야간 큐 (BLE/라이프사이클 보류 3건)** — 워치 미연결, 일시정지, 자동 일시정지, 인증 잔여 가드
 5. **iOS 백그라운드 복귀 크래시 디버깅** — 실기기/TestFlight 필요
 6. **출시 직전 묶음** — Apple Developer / 약관 변호사 / 사업자 정보
 
@@ -49,7 +49,7 @@
 |---|---|
 | Android GPS 버그 (실기기 검증) | 🔴 미검증 |
 | iOS 백그라운드 크래시 | 🔴 미해결 |
-| 계정 탈퇴 플로우 | 🟠 야간 큐 등록됨 |
+| 계정 탈퇴 플로우 (Flutter 측) | ✅ 2026-05-09 완료 (Cloud Functions hard delete cron 사용자 영역) |
 | 약관 변호사 검토 | ⬜ 출시 직전 |
 | Apple Developer 등록 | ⬜ Android 출시 1개월 전 |
 | Cloud Functions (Blaze) | ⬜ 출시 2주 전 |

@@ -1,6 +1,6 @@
 # Runtify 기능 기획서
 
-> 작성일: 2026-03-04 / 최종 수정: 2026-05-06
+> 작성일: 2026-03-04 / 최종 수정: 2026-05-09
 > 규칙: **Figma 디자인 승인 → 코드 구현** 순서 필수
 > 관련 문서: [POLICY.md](POLICY.md) (운영 정책), [STATUS.md](STATUS.md) (현재 상황)
 > **완료 항목의 구현 detail은 git log + 코드 참조** — 이 문서는 미완료 / 의사결정 / 정책 중심
@@ -48,23 +48,21 @@
   - [ ] 홈 상단 "동기화 대기 N건" 배너 위젯
   - [ ] 이메일 인증 가드와 큐 공유
 
-- [ ] **[계정] 회원 탈퇴 플로우 — Flutter 측 (2026-05-03 추가, POLICY § 4 기반)** — 180분
-  - 분리 원칙: **Flutter 측은 야간 자동, Cloud Functions / 이메일 발송 / 약관 변호사 검토는 사용자 직접** (출시 직전 묶음)
-  - 구현 체크리스트 (Flutter 측 야간):
-    - [ ] `UserEntity`/`UserModel` 에 `deletedAt: DateTime?`, `scheduledHardDeleteAt: DateTime?` 필드 추가
-    - [ ] `auth_firebase_datasource.getCurrentUser` 등에서 `deletedAt != null` 시 복구 화면으로 분기
-    - [ ] `lib/core/services/account_deletion_service.dart` 신설 — `requestDeletion`/`confirmDeletion`/`recoverAccount`. 6자리 코드는 SHA256 해시로 subdoc(TTL 10분) 저장
-    - [ ] 이메일 코드 발송은 Flutter 측 placeholder — 실제 발송은 Cloud Functions(추후)
-    - [ ] `AuthRepository`/`AuthRemoteDataSource`/`AuthNotifier` 체인 노출
-    - [ ] 크루 리더 탈퇴 검증: 본인 리더 + 멤버 1명+ 시 거부 + 양도 안내
-    - [ ] 프로필 하단 "계정 삭제" 버튼 → `AccountDeletionDialog` (1차: 비번/소셜 재로그인 → 2차: 이메일 코드)
-    - [ ] 30일 내 재로그인 시 `RecoverAccountPage` 자동 표시 (router에 추가)
-    - [ ] 모든 user/running/crew 조회 쿼리에 `where('deletedAt', '==', null)` 클라이언트 필터
-    - [ ] 단위 테스트 + `flutter analyze` + `flutter test`
-  - **사용자 직접 작업 (출시 2주 전 묶음)**: Cloud Functions (`scheduledHardDelete` cron + `sendDeletionCodeEmail` + `FirebaseAuth.delete()` 30일 후) / Blaze 요금제 / 약관 탈퇴 조항 + 변호사 검토 / App Store 심사 메모
+- [ ] **[계정] 회원 탈퇴 — 사용자 직접 작업 (출시 2주 전 묶음, 2026-05-09 Flutter 측 완료)**
+  - Flutter 측 완료(아래 완료 섹션 참조). 사용자 직접 작업만 남음:
+    - [ ] Cloud Functions `scheduledHardDelete` cron — 매일 자정 `scheduledHardDeleteAt < now` 사용자 hard delete (`FirebaseAuth.delete()` + Firestore docs purge)
+    - [ ] Cloud Functions `sendDeletionCodeEmail` — `users/{uid}/account_deletion/code` 문서 onCreate 트리거 → 이메일 발송. 출시 시 코드 생성도 Cloud Functions onCall 로 마이그레이션 (현재 Flutter placeholder)
+    - [ ] Blaze 요금제 전환
+    - [ ] 약관 탈퇴 조항 + 변호사 검토
+    - [ ] App Store 심사 메모 (계정 탈퇴 위치: 프로필 → 로그아웃 아래 "계정 삭제")
 
 #### 완료 (한 줄 요약, 상세는 git log)
 
+- [x] **🌙 [보안] 탈퇴 코드 5회 시도 제한** (2026-05-09) — 야간 PM 신규 발견. `DeletionCodeResult.tooManyAttempts` + `attemptCount` increment, maxAttempts 도달 시 doc 즉시 삭제 → issueCode 부터 다시. 260 tests pass
+- [x] **🌙 [보안] 탈퇴 코드 발송 레이트 리밋 5분/3회** (2026-05-09) — 야간 PM 신규 발견. `AccountDeletionRateLimiter` 슬라이딩 윈도우 (이메일 인증 패턴 재사용, 키 prefix 분리). AuthNotifier 사전 체크 + 한국어 카운트다운. 258 tests pass
+- [x] **🌙 [UX] 푸시 알림 옵트아웃 토글** (2026-05-09) — 야간 PM 신규 발견. `PushNotificationService.isOptedIn`/`setOptedIn` SharedPreferences (기본 ON), `initForUser` 진입 시 옵트아웃 체크 + Profile 즉시 토글
+- [x] **🌙 [관측성] 회원 탈퇴 Analytics 3개** (2026-05-09) — 야간 PM 신규 발견. `account_deletion_requested/confirmed/recovered` — 이탈률 + 30일 유예 복구율 추적
+- [x] **🌙 [계정] 회원 탈퇴 플로우 — Flutter 측 (POLICY § 4)** (2026-05-09) — 5단계 분할 커밋. 데이터 모델(deletedAt/scheduledHardDeleteAt + 크루 멤버 쿼리 필터) → AccountDeletionService(6자리 + SHA256 + uid salt + TTL 10분) → DataSource/Notifier 체인(canRequestDeletion 크루 리더 검증/requestDeletionCode/confirmDeletion 자동 로그아웃/recoverAccount) → AccountDeletionDialog(intro/leaderBlocked/code 3단계) → RecoverAccountPage + router redirect (`isPendingDeletion` 강제 이동). 253 tests pass
 - [x] **🌙 [가입 UX] 이메일 인증 Deep Link** (2026-05-07) — `app_links` + `DeepLinkHandler` 콜드/웜 진입, `oobCode` `verifyEmail` 모드 검증 → `applyActionCode` → 토스트. `RuntifyApp` ConsumerStatefulWidget + scaffoldMessengerKey. ⚠️ 호스팅(assetlinks/apple-app-site-association) + Firebase Action URL은 사용자 영역
 - [x] **🌙 [데이터] wakelock_plus 도입** (2026-05-07) — `WakelockService` `tryEnable`/`tryDisable` (silent 폴백, 웹 미지원), running_page 라이프사이클 hook, Profile 토글(기본 ON, SharedPreferences). ⚠️ 실기기 라이프사이클 검증 필수
 - [x] **🌙 [기능] 닉네임 사후 변경 — 30일 1회** (2026-05-07) — `NicknameChangePolicy.canChange/daysUntilChangeable`, `UserEntity.nameChangedAt`, `AuthNotifier.changeNickname` (검증→정책→중복→Firestore), `ChangeNicknameDialog` (30일 미만 disabled). 240 tests pass
