@@ -354,6 +354,8 @@ class AuthFirebaseDataSource implements AuthRemoteDataSource {
         throw Exception('인증 코드가 만료되었어요. 다시 요청해주세요');
       case DeletionCodeResult.notIssued:
         throw Exception('인증 코드를 먼저 요청해주세요');
+      case DeletionCodeResult.tooManyAttempts:
+        throw Exception('인증 코드 입력 횟수를 초과했어요. 다시 요청해주세요');
     }
 
     final now = DateTime.now();

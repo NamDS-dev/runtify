@@ -8,7 +8,8 @@ import 'package:flutter/foundation.dart';
 import '../utils/firebase_timeout.dart';
 
 /// 회원 탈퇴 6자리 코드 검증 결과.
-enum DeletionCodeResult { valid, invalid, expired, notIssued }
+/// - tooManyAttempts: 5회 연속 잘못된 코드 입력 → 브루트포스 방지로 코드 자동 무효화
+enum DeletionCodeResult { valid, invalid, expired, notIssued, tooManyAttempts }
 
 /// 회원 탈퇴 6자리 인증 코드 서비스 — POLICY § 4 (2026-05-09).
 ///
@@ -28,6 +29,8 @@ class AccountDeletionService {
   static const Duration codeTtl = Duration(minutes: 10);
   static const int codeLength = 6;
   static const String _docName = 'code';
+  // 브루트포스 방지 — 5회 연속 잘못된 코드 입력 시 코드 자동 무효화
+  static const int maxAttempts = 5;
 
   final FirebaseFirestore _firestore;
   final Random _random;
@@ -62,6 +65,8 @@ class AccountDeletionService {
         'codeHash': hash,
         'issuedAt': issuedAt.toIso8601String(),
         'expiresAt': expiresAt.toIso8601String(),
+        // 시도 횟수 — verifyCode 실패 시 increment, maxAttempts 도달 시 doc 삭제
+        'attemptCount': 0,
       }),
       operation: 'AccountDeletionService.issueCode',
     );
@@ -76,7 +81,11 @@ class AccountDeletionService {
     return code;
   }
 
-  /// 사용자 입력 코드를 해시 비교 + TTL 검증.
+  /// 사용자 입력 코드를 해시 비교 + TTL 검증 + 브루트포스 시도 횟수 제한.
+  ///
+  /// 잘못된 코드 입력 시 attemptCount increment. [maxAttempts] 도달 시
+  /// 코드 doc 즉시 삭제하고 [DeletionCodeResult.tooManyAttempts] 반환 →
+  /// 사용자는 issueCode 부터 다시 시작해야 함.
   Future<DeletionCodeResult> verifyCode({
     required String uid,
     required String code,
@@ -101,9 +110,27 @@ class AccountDeletionService {
     if (expectedHash == null) return DeletionCodeResult.notIssued;
 
     final candidateHash = _hashCodeForUser(code: code, uid: uid);
-    return candidateHash == expectedHash
-        ? DeletionCodeResult.valid
-        : DeletionCodeResult.invalid;
+    if (candidateHash == expectedHash) {
+      return DeletionCodeResult.valid;
+    }
+
+    // 잘못된 코드 — 시도 횟수 증가 + maxAttempts 도달 시 무효화
+    final currentAttempts = (data['attemptCount'] as int?) ?? 0;
+    final newAttempts = currentAttempts + 1;
+    if (newAttempts >= maxAttempts) {
+      try {
+        await _codeDoc(uid).delete();
+      } catch (_) {
+        // 무시 — 다음 issueCode 시 덮어쓰기
+      }
+      return DeletionCodeResult.tooManyAttempts;
+    }
+    try {
+      await _codeDoc(uid).update({'attemptCount': newAttempts});
+    } catch (_) {
+      // 카운터 갱신 실패는 silent — 사용자 흐름 차단 X
+    }
+    return DeletionCodeResult.invalid;
   }
 
   /// 검증 성공/취소 후 코드 문서 정리. 한 번 사용한 코드 재사용 차단.

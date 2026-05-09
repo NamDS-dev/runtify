@@ -57,5 +57,16 @@ void main() {
     test('codeLength = 6', () {
       expect(AccountDeletionService.codeLength, 6);
     });
+
+    test('maxAttempts = 5 (브루트포스 방지)', () {
+      expect(AccountDeletionService.maxAttempts, 5);
+    });
+  });
+
+  group('DeletionCodeResult enum', () {
+    test('5개 케이스 — valid/invalid/expired/notIssued/tooManyAttempts', () {
+      expect(DeletionCodeResult.values.length, 5);
+      expect(DeletionCodeResult.values.contains(DeletionCodeResult.tooManyAttempts), true);
+    });
   });
 }
