@@ -56,6 +56,8 @@
 - **현재 상황**: [docs/STATUS.md](docs/STATUS.md)
 - **상세 기획 + 야간 큐**: [docs/FEATURE_PLAN.md](docs/FEATURE_PLAN.md)
 - **운영 정책**: [docs/POLICY.md](docs/POLICY.md)
+- **인프라/배포**: [docs/INFRA.md](docs/INFRA.md) (Firebase/Functions/Hosting)
+- **기획 백로그**: [docs/BRAINSTORM_BACKLOG.md](docs/BRAINSTORM_BACKLOG.md) (가설 + Tier 2/3)
 
 ## 코딩 완료 후 필수 체크 (자동 QA)
 코드 작성이 끝나면 **항상 이 순서로 실행**:

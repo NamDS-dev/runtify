@@ -1,6 +1,7 @@
 # Runtify 개발 가이드
 
 > 일상 개발 참고. 1회성 셋업(Firebase, VS Code launch.json, 커밋 컨벤션)은 [SETUP.md](SETUP.md).
+> 인프라/배포(Firebase·Cloud Functions·Hosting·배포 절차)는 [INFRA.md](INFRA.md).
 > 규칙: **Design-First** — Figma 디자인 확정 → Flutter 코드 구현 순서 필수
 
 ---
