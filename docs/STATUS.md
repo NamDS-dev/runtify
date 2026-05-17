@@ -15,7 +15,7 @@
 ## 다음 권장 작업 (우선순위 순)
 
 1. **🌙 야간 결과물 27건 실기기 검증** (3차 야간 누적) — 신규 9건: 회원 탈퇴 5단계 + 탈퇴 Analytics + 푸시 옵트아웃 토글 + 탈퇴 코드 레이트 리밋(5분/3회) + 5회 시도 제한
-2. **사용자 직접 작업** (출시 전) — Cloud Functions(FCM cron / 탈퇴 hard delete cron / sendDeletionCodeEmail) / Firebase Console / 호스팅 / native config / Blaze 요금제 / 약관 변호사 검토
+2. **사용자 직접 작업** (출시 전) — ✅ Blaze 전환·Cloud Functions 3개 배포·Hosting(assetlinks/aasa)·firestore 인덱스 완료(2026-05-09) / 남은 것: Cloud Functions TODO 로직 채우기(랭킹 비교·SendGrid) / Firebase Auth Action URL / native config(iOS Crashlytics·APNS, Apple Developer 후) / 약관 변호사 검토
 3. **GPS 버그 수정 실기기 검증** — 2026-05-03 코드 수정 완료. 갤럭시 워치 + 야외 검증 필요
 4. **남은 야간 큐 (BLE/라이프사이클 보류 3건)** — 워치 미연결, 일시정지, 자동 일시정지, 인증 잔여 가드
 5. **iOS 백그라운드 복귀 크래시 디버깅** — 실기기/TestFlight 필요
@@ -52,4 +52,5 @@
 | 계정 탈퇴 플로우 (Flutter 측) | ✅ 2026-05-09 완료 (Cloud Functions hard delete cron 사용자 영역) |
 | 약관 변호사 검토 | ⬜ 출시 직전 |
 | Apple Developer 등록 | ⬜ Android 출시 1개월 전 |
-| Cloud Functions (Blaze) | ⬜ 출시 2주 전 |
+| Cloud Functions (Blaze) | 🟠 배포 완료(2026-05-09) / TODO 로직 채우기 + prod 동기화 남음 |
+| Firebase 인프라 (Hosting/인덱스) | ✅ runtify-dev 배포 완료 (2026-05-09) |

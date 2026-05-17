@@ -25,6 +25,24 @@
 
 ---
 
+## ⚡ Step 0: 트랙 판단 (웹 QA vs 실기기 QA)
+
+QA 시작 전 **이 기능이 어느 트랙인지 먼저 판정**한다.
+
+| 조건 | 트랙 |
+|------|------|
+| 순수 UI / 로직 / 폼 / 상태 관리 검증 | **웹 QA** (Step 1~7, 에이전트 자동) |
+| GPS / 위치 / BLE / Health / 센서 | **실기기 QA** |
+| 백그라운드·포그라운드 라이프사이클 (`WidgetsBindingObserver`, `AppLifecycleState`) | **실기기 QA** |
+| 푸시 알림 (FCM) | **실기기 QA** |
+| 네이티브 설정 변경 (Info.plist/AndroidManifest/Podfile/build.gradle/Xcode Capability) | **실기기 QA** |
+| 위 두 성격을 모두 가짐 | **웹으로 로직 1차 → 실기기 2차** (둘 다) |
+
+- 웹 QA → 그대로 Step 1 진행
+- 실기기 QA → **"실기기 QA 트랙" 섹션으로 이동** (아래)
+
+---
+
 ## Step 1: 정적 분석
 
 ```bash
@@ -161,3 +179,97 @@ QA 완료 — [기능명]: [통과]/[전체] 케이스 통과, 이슈 [N]건
 - Flutter semantics 클릭이 안 되면 `browser_evaluate`로 JS 직접 클릭
 - Web과 Mobile은 UI가 다를 수 있음 — Web 기준으로 테스트
 - 접근성 버튼이 뷰포트 밖이면 `document.querySelector('flt-semantics-placeholder')?.click()` 사용
+
+---
+
+# 🔵 실기기 QA 트랙
+
+> Step 0에서 "실기기 QA"로 판정된 기능은 이 트랙을 따른다.
+> **에이전트는 직접 테스트 못 함** — 빌드 준비 + 에뮬레이터 1차 + 체크리스트 노션 동기화 + 결과 분석이 역할.
+> 사용자는 야외/실기기에서 체크박스만 진행.
+
+## 핵심 원칙
+
+| | 웹 QA | 실기기 QA |
+|---|---|---|
+| 실행 주체 | 에이전트 (Playwright) | **사용자** (야외) + 에이전트 (준비/분석) |
+| 에이전트 역할 | 직접 테스트 | 빌드 + 에뮬 1차 + **노션 동기화** + 결과 분석 |
+| 산출물 | `qa_latest.md` | `DEVICE_TEST_QUEUE.md` + 노션 상시 페이지 + `qa_device_latest.md` |
+
+## D-Step 1: 에뮬레이터 1차 검증 (에이전트 자동 — 가능한 범위만)
+
+| 기능 | 에뮬 커버리지 | 방법 |
+|------|--------------|------|
+| GPS 거리 누적 | ~90% | Android Emulator + Extended Controls Routes(GPX) 재생 + `adb` UI 자동 구동 + logcat 캡처 |
+| iOS 백그라운드 크래시 | ~50% | 시뮬레이터 라이프사이클 (BLE 미지원이라 BLE 원인은 못 잡음) |
+| BLE 심박수 | 0% | **실기기 필수** — 에뮬 스킵 |
+| 푸시 알림 (FCM) | 0% | **실기기 필수** — 에뮬 스킵 |
+| wakelock 라이프사이클 | 0% | **실기기 필수** — 에뮬 스킵 |
+
+에뮬로 잡히는 버그는 여기서 픽스 → 커밋. 못 잡는 건 D-Step 2로.
+
+## D-Step 2: 빌드 준비 (에이전트 안내/실행)
+
+```bash
+flutter devices                       # 디바이스 ID 확인
+flutter build apk --release           # release APK
+flutter install --release -d <id>     # USB 연결 단말에 설치
+```
+
+> 출시 전이라 Play Store 설치 불가 → USB release 빌드가 유일한 경로.
+> "첫 설치" 시나리오 재현 = 설정 → 앱 → Runtify → 데이터 삭제 (또는 권한 전체 거부).
+
+## D-Step 3: 노션 상시 페이지 동기화 (⭐ 핵심 프로세스)
+
+**`docs/DEVICE_TEST_QUEUE.md` "🔴 대기 중"에 항목 추가 시, 반드시 노션 상시 페이지에도 동일 항목을 추가한다.**
+
+- **노션 상시 페이지**: `📱 Runtify 실기기 테스트 큐 (상시)`
+  - Page ID: `357458d7-2faa-8140-8991-ea7719bb051a`
+  - URL: https://www.notion.so/357458d72faa81408991ea7719bb051a
+  - 부모: `Runtify 일일 브리핑`
+- 날짜 무관 **상시 누적 큐** (새 페이지 만들지 말 것 — 파편화 금지)
+- 항목은 노션 to-do 체크박스(`- [ ]`)로 — 사용자가 모바일에서 체크 가능하도록
+- 각 항목 포함: 변경 요약 1줄 + 시나리오별 체크박스 + 관련 commit 해시
+- `mcp__claude_ai_Notion__notion-update-page` `update_content`로 "🔴 Top Priority" 또는 해당 섹션에 append
+
+## D-Step 4: 사용자 테스트 (에이전트 대기)
+
+사용자가 야외/실기기에서 노션 체크박스 진행 + "테스트 결과 메모"에 이슈 기록.
+
+## D-Step 5: 결과 수집 → 자동 분기
+
+사용자가 결과 알려주면:
+
+| 결과 | 처리 |
+|------|------|
+| ✅ 통과 | `DEVICE_TEST_QUEUE.md` "✅ 완료 아카이브"로 이동 + 노션 페이지에서도 해당 항목 완료 처리 |
+| ❌ 실패 (저위험) | 즉시 픽스 커밋 → 재검증 항목으로 노션 갱신 |
+| ❌ 실패 (실기기 재현 필요/고위험) | `FEATURE_PLAN.md` 야간 큐 or 🔴 등록 |
+
+핸드오프: `docs/handoffs/qa_device_latest.md` 작성:
+
+```markdown
+---
+date: [YYYY-MM-DD]
+target: [기능명]
+track: device
+result: pass | fail | partial
+device: [기기 모델 / OS 버전 / 테스트 환경(야외·실내)]
+---
+
+## 에뮬 1차 결과
+- [에뮬로 검증한 것 + 통과/실패]
+
+## 실기기 케이스
+| # | 시나리오 | 기대 | 실제 | 상태 |
+|---|----------|------|------|------|
+
+## 발견 이슈 + 다음 액션
+```
+
+## D 트랙 한 줄 요약 보고
+
+```
+실기기 QA — [기능명]: 에뮬 1차 [통과/N건 픽스], 노션 큐 동기화 완료 → 사용자 야외 검증 대기
+🔗 https://www.notion.so/357458d72faa81408991ea7719bb051a
+```

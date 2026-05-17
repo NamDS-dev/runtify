@@ -43,7 +43,7 @@ prompt: """
 - /Users/dave/.claude/projects/-Users-dave-runtify/memory/design.md — 캔버스 레이아웃 규칙
 
 ## 작업 순서
-1. Figma 채널 `kb7eas4f` 에 join_channel
+1. Figma 채널 join_channel — **채널명은 `~/.claude/projects/-Users-dave-runtify/memory/MEMORY.md`의 "Figma 연결" 섹션에서 최신 채널 확인** (채널은 자주 바뀌므로 하드코딩 금지). 연결 실패 시 socket 로그에서 client join 채널명 재확인
 2. get_document_info 로 현재 프레임 위치 전체 확인
 3. design.md 규칙에 따라 올바른 Row와 x 좌표에 프레임 생성 (390×844)
 4. 화면 UI 완성 (색상: design.md의 색상표 기준)
@@ -128,7 +128,7 @@ prompt: """
 /Users/dave/runtify/.claude/commands/qa.md 파일을 읽고 그 절차대로 [기능명]을 QA 하세요.
 
 테스트 대상: [기능명]
-Figma 채널: epm8xb3x (Figma MCP 사용 가능 시 디자인 비교)
+Figma 채널: MEMORY.md "Figma 연결" 섹션의 최신 채널 사용 (Figma MCP 디자인 비교 시)
 
 완료 후 /Users/dave/runtify/docs/handoffs/qa_latest.md 를 생성하세요.
 """
@@ -157,7 +157,7 @@ QA 완료 후 `docs/handoffs/qa_latest.md`를 읽어 결과 확인.
 3. **`design.md` 업데이트** (디자인 작업이 있었다면)
    - `~/.claude/projects/-Users-dave-runtify/memory/design.md`의 프레임 테이블에 신규 프레임 추가
 
-4. **`docs/DEVICE_TEST_QUEUE.md` 업데이트** — 실기기 검증이 필요한 경우만
+4. **`docs/DEVICE_TEST_QUEUE.md` + 노션 상시 페이지 동기화** — 실기기 검증이 필요한 경우만
 
    아래 조건 중 하나라도 해당되면 반드시 `docs/DEVICE_TEST_QUEUE.md`의 "🔴 대기 중" 섹션에 항목 추가:
    - GPS/위치/센서/BLE/Health 관련 코드 변경
@@ -168,6 +168,12 @@ QA 완료 후 `docs/handoffs/qa_latest.md`를 읽어 결과 확인.
    - 시뮬/에뮬에서 검증됐지만 실기기 최종 확인이 권장되는 경우는 `[선택]` 분류로 추가
 
    파일 상단의 "작성 규칙" 섹션 형식을 따를 것. `[분류]` 태그, 관련 커밋 해시, 관련 핸드오프 파일 경로 필수.
+
+   ⭐ **DEVICE_TEST_QUEUE.md에 추가하면 반드시 노션 상시 페이지에도 동일 항목 동기화**:
+   - 노션 페이지: `📱 Runtify 실기기 테스트 큐 (상시)` — Page ID `357458d7-2faa-8140-8991-ea7719bb051a`
+   - 날짜 무관 상시 누적 큐 (새 페이지 만들지 말 것)
+   - `mcp__claude_ai_Notion__notion-update-page` `update_content`로 해당 섹션에 체크박스(`- [ ]`) append
+   - 상세 절차는 `.claude/commands/qa.md`의 "실기기 QA 트랙 → D-Step 3" 참조
 
 5. **사용자에게 완료 보고**:
 
